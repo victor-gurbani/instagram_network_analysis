@@ -1,3 +1,4 @@
+import json
 # Get instance
 import instaloader
 L = instaloader.Instaloader()
