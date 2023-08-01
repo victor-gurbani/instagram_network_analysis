@@ -1,62 +1,61 @@
-from bot import Bot
-import argparse
-import os.path
+import instaloader
+import time
+import sys
+from alive_progress import alive_bar
+import copy
+import json
 
+print("Starting") 
+with open('../config.json') as config_file:
+  config = json.load(config_file)
+  username = config['username']
 
-def generate_txt(relations_file, my_followers_arr, username):
-    relations = open(relations_file, 'w+')
-    for key in my_followers_arr:
-        line = key + " " + "https://www.instagram.com/" + username + "/\n" + "https://www.instagram.com/" + username + "/ " + key + "\n"
-        relations.write(line)
+L = instaloader.Instaloader()
+L.load_session_from_file(username)
+relations_file = 'relations.txt'
+my_followers = []
+my_followers_left = []
 
+with open('my_followers.txt') as f:
+    my_followers = [line.strip() for line in f.readlines()]
 
-def get_start_profile():
-    with open('start_profile.txt') as f:
-        return int(f.readline())
+with open('my_followers_left.txt') as f:
+    my_followers_left = [line.strip() for line in f.readlines()]
 
+try:
+  with open(relations_file, 'a') as f:
+    for follower in my_followers_left:
+        print(f"Getting relations for {follower}")
 
-def get_my_followers_from_txt():
-    my_followers_arr = []
-    with open('my_followers.txt') as f:
-        for line in f:
-            my_followers_arr.append(line.rstrip('\n'))
-    return my_followers_arr
+        profile = instaloader.Profile.from_username(L.context, follower)
+        tempFollowees = profile.get_followees()
+        #tempFollowees2 = copy.deepcopy(tempFollowees)
+        #howMany = sum(1 for _ in tempFollowees2)
+        print("Saved followees.", end="")
+        time.sleep(0.5)
+        print("\rProcessing followees...\r", end="")
+        countMutual = 0
+        #with alive_bar(howMany) as bar:
+        for followee in tempFollowees:
+          #print(followee)
+          #print(followee.username)
+          if followee.username.strip() in my_followers:
+            #print(f"{follower} {followee.username}\n")
+            f.write(f"{follower} {followee.username}\n")
+            f.flush()
+            countMutual = countMutual + 1
+          #bar()
+          
+        print("Mutual: ", countMutual, " followees")
+        if countMutual == 0:
+            sys.exit()
+        print('sed -i "" -e "1d" my_followers_left.txt')
+        print("Exit now if necessary\r", end="")
+        time.sleep(10)
 
+except Exception as e:
+  print(f"Error: {e}")
+  print("Error") 
 
-def get_relations(config):
-    relations_file = config.relations_file
-    username = config.username
-    password = config.password
-    b = Bot()
-
-    b.setUp()
-    b.go_to_page("https://www.instagram.com/accounts/login/")
-    b.login(username, password)
-
-    my_followers_arr = get_my_followers_from_txt()
-    if not os.path.isfile(relations_file):
-        generate_txt(relations_file, my_followers_arr, username)
-
-    if os.path.isfile('start_profile.txt'):
-        start_profile = get_start_profile()
-        print("Start scraping at profile nr " + str(start_profile))
-    else:
-        start_profile = 1
-        with open('start_profile.txt', 'w+') as outfile:
-            outfile.write("1")
-
-    b.get_followers(my_followers_arr, start_profile, relations_file)
-
-
-if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser()
-
-    # input parameters
-    parser.add_argument('--relations_file', type=str)
-    parser.add_argument('--username', type=str)
-    parser.add_argument('--password', type=str)
-
-    config = parser.parse_args()
-
-    get_relations(config)
+          
+print("Done")

@@ -1,34 +1,26 @@
-from bot import Bot
-import argparse
+# Get instance
+import instaloader
+L = instaloader.Instaloader()
 
+# Login or load session
+with open('../config.json') as config_file:
+  config = json.load(config_file)
+  username = config['username']
 
-def generate_my_followers_txt(my_followers):
-    my_followers_txt = open("my_followers.txt", 'w+')
-    for follower in my_followers:
-        my_followers_txt.write(follower + "\n")
+L = instaloader.Instaloader()
+L.load_session_from_file(username)
 
+# Obtain profile metadata
+profile = instaloader.Profile.from_username(L.context, username)
 
-def get_my_followers(config):
-    username = config.username
-    password = config.password
-    b = Bot()
-
-    b.setUp()
-    b.go_to_page("https://www.instagram.com/accounts/login/")
-    b.login(username, password)
-
-    my_followers = b.get_my_followers(username)
-    generate_my_followers_txt(my_followers)
-
-
-if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser()
-
-    # input parameters
-    parser.add_argument('--username', type=str)
-    parser.add_argument('--password', type=str)
-
-    config = parser.parse_args()
-
-    get_my_followers(config)
+# Print list of followees
+follow_list = []
+count=0
+for followee in profile.get_followers():
+    follow_list.append(followee.username)
+    file = open("followers.txt","a+")
+    file.write(follow_list[count])
+    file.write("\n")
+    file.close()
+    print(follow_list[count])
+    count=count+1
