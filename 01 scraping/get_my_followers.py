@@ -1,4 +1,5 @@
 import json
+from time import sleep
 # Get instance
 import instaloader
 L = instaloader.Instaloader()
@@ -18,6 +19,7 @@ profile = instaloader.Profile.from_username(L.context, username)
 follow_list = []
 count=0
 for followee in profile.get_followers():
+    sleep(0.1)
     follow_list.append(followee.username)
     file = open("followers.txt","a+")
     file.write(follow_list[count])

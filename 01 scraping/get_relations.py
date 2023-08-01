@@ -6,6 +6,7 @@ import copy
 import json
 
 print("Starting") 
+
 with open('../config.json') as config_file:
   config = json.load(config_file)
   username = config['username']
@@ -16,12 +17,18 @@ relations_file = 'relations.txt'
 my_followers = []
 my_followers_left = []
 
-with open('my_followers.txt') as f:
+with open('followers.txt') as f:
     my_followers = [line.strip() for line in f.readlines()]
 
 with open('my_followers_left.txt') as f:
     my_followers_left = [line.strip() for line in f.readlines()]
 
+if not my_followers_left:
+  with open('my_followers_left.txt', 'w') as f:
+    for follower in my_followers:
+      f.write(f"{follower}\n")
+  my_followers_left = my_followers.copy()
+  
 try:
   with open(relations_file, 'a') as f:
     for follower in my_followers_left:
@@ -37,6 +44,7 @@ try:
         countMutual = 0
         #with alive_bar(howMany) as bar:
         for followee in tempFollowees:
+          time.sleep(0.05)
           #print(followee)
           #print(followee.username)
           if followee.username.strip() in my_followers:
