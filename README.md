@@ -37,6 +37,8 @@ python3 relations_to_json.py
 ```
 _--wait-time can be ommited but set it to a high value in seconds to avoid detection_
 
+To monitor the scraping you can `tail -F relations.txt `
+
 ## Step 3 
 
 Finised! Now visualise it and process the data!
