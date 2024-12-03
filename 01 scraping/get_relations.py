@@ -1,17 +1,23 @@
 import instaloader
 import time
 import sys
-#from alive_progress import alive_bar
 import copy
 import json
 import os
 import platform
+import argparse
 
-print("Starting") 
+print("Starting")
+
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description='Process some integers.')
+parser.add_argument('--wait-time', type=int, default=10, help='Time to wait between processing people, in seconds (default: 10)')
+args = parser.parse_args()
+wait_time = args.wait_time
 
 with open('../config.json') as config_file:
-  config = json.load(config_file)
-  username = config['username']
+    config = json.load(config_file)
+    username = config['username']
 
 L = instaloader.Instaloader()
 L.load_session_from_file(username)
@@ -40,50 +46,42 @@ if not my_followers_left:
         for follower in my_followers:
             f.write(f"{follower}\n")
     my_followers_left = my_followers.copy()
-  
+
 try:
-  with open(relations_file, 'a') as f:
-    for follower in my_followers_left:
-        print(f"Getting relations for {follower}")
+    with open(relations_file, 'a') as f:
+        for follower in my_followers_left:
+            print(f"Getting relations for {follower}")
 
-        profile = instaloader.Profile.from_username(L.context, follower)
-        tempFollowees = profile.get_followees()
-        #tempFollowees2 = copy.deepcopy(tempFollowees)
-        #howMany = sum(1 for _ in tempFollowees2)
-        print("Saved followees.", end="")
-        time.sleep(0.5)
-        print("\rProcessing followees...\r", end="")
-        countMutual = 0
-        #with alive_bar(howMany) as bar:
-        for followee in tempFollowees:
-          time.sleep(0.05)
-          #print(followee)
-          #print(followee.username)
-          if followee.username.strip() in my_followers:
-            #print(f"{follower} {followee.username}\n")
-            f.write(f"{follower} {followee.username}\n")
-            f.flush()
-            countMutual = countMutual + 1
-          #bar()
-          
-        print("Mutual: ", countMutual, " followees")
-        if countMutual == 0:
-            sys.exit()
+            profile = instaloader.Profile.from_username(L.context, follower)
+            tempFollowees = profile.get_followees()
+            print("Saved followees.", end="")
+            time.sleep(0.5)
+            print("\rProcessing followees...\r", end="")
+            countMutual = 0
+            for followee in tempFollowees:
+                time.sleep(0.05)
+                if followee.username.strip() in my_followers:
+                    f.write(f"{follower} {followee.username}\n")
+                    f.flush()
+                    countMutual += 1
 
-        if platform.system() == 'Windows':
-            with open('my_followers_left.txt', 'r') as f:
-                lines = f.readlines()
-            with open('my_followers_left.txt', 'w') as f:
-                f.writelines(lines[1:])
-        else:
-            os.system('sed -i "" -e "1d" my_followers_left.txt')
-        
-        print("Exit now if necessary\r", end="")
-        time.sleep(10)
+            print("Mutual: ", countMutual, " followees")
+            if countMutual == 0:
+                sys.exit()
+
+            if platform.system() == 'Windows':
+                with open('my_followers_left.txt', 'r') as f_r:
+                    lines = f_r.readlines()
+                with open('my_followers_left.txt', 'w') as f_w:
+                    f_w.writelines(lines[1:])
+            else:
+                os.system('sed -i "" -e "1d" my_followers_left.txt")
+
+            print("Exit now if necessary\r", end="")
+            time.sleep(wait_time)
 
 except Exception as e:
-  print(f"Error: {e}")
-  print("Error") 
+    print(f"Error: {e}")
+    print("Error")
 
-          
 print("Done")
