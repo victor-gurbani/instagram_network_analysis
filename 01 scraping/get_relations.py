@@ -75,7 +75,7 @@ try:
                 with open('my_followers_left.txt', 'w') as f_w:
                     f_w.writelines(lines[1:])
             else:
-                os.system('sed -i "" -e "1d" my_followers_left.txt")
+                os.system('sed -i "" -e "1d" my_followers_left.txt')
 
             print("Exit now if necessary\r", end="")
             time.sleep(wait_time)
