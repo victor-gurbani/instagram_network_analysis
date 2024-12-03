@@ -1,7 +1,7 @@
 # Instagram Network Analysis
 
-_I do not make myself responsible for any consequences to Instagram Accounts after using this project._
-_Instagram might find it suspicious, to avoid errors add 2FA and use instaloader cookie auth_
+_I do not make myself responsible for any consequences to Instagram Accounts after using this project._\
+_Instagram might find it suspicious to use bots. To avoid errors, add 2FA and use instaloader carefully._
 
 ## Step 0
 
