@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import argparse
+import json
 from helper_functions import *
 
 
@@ -54,16 +56,18 @@ def global_analysis(config):
 
 
 
+# Read the username from config.json
+with open('../config.json') as config_file:
+    conf = json.load(config_file)
+    default_username = conf['username']
+
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser()
-
-    # input parameters
-    parser.add_argument('--username', type=str)
-    parser.add_argument('--input_txt_file', type=str)
-    parser.add_argument('--include_me', type=str2bool)
+    parser.add_argument('--username', type=str, default=default_username, help='The username to use')
+    parser.add_argument('--include_me', type=str2bool, default=False, help='Whether to include yourself in the analysis')
+    parser.add_argument('--input_txt_file', type=str, default='relations.txt', help='Input text file')
+    parser.add_argument('--input_json_file', type=str, default='relations.json', help='Input JSON file')
 
     config = parser.parse_args()
-
     global_analysis(config)
 

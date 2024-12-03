@@ -1,7 +1,14 @@
-import community as community
+import argparse
+import communities as community
+from communities.algorithms import louvain_method
+from communities.algorithms import girvan_newman
+
 import json
 from helper_functions import *
 import pprint
+
+def str2bool(v):
+    return v.lower() in ('yes', 'true', 't', '1')
 
 def community_detection(config):
     my_name = config.username
@@ -12,7 +19,7 @@ def community_detection(config):
     G = create_undirected_graph_from_txt(my_name, include_me, input_txt_file)
 
     # LOUVAIN METHOD
-    partition_louvain = community.best_partition(G)
+    partition_louvain = louvain_method(G)
     size = float(len(set(partition_louvain.values())))
     pos = nx.spring_layout(G)
     count = 0.
@@ -26,9 +33,6 @@ def community_detection(config):
                                node_color=str(count / size))
 
     # GIRVAN NEWMAN
-    #comp = nx.algorithms.community.centrality.girvan_newman(G)
-    #communities_newman = list(sorted(c) for c in next(comp))
-
     communities_generator = nx.algorithms.community.girvan_newman(G)
     communities_newman = next(communities_generator)
     modularity_newman_new = nx.algorithms.community.modularity(G, communities_newman)
@@ -47,7 +51,7 @@ def community_detection(config):
         for profile in cluster:
             partition_newman[profile] = idx
 
-    #get new jsons
+    # Get new JSONs
     with open(input_json_file) as f:
         input_dict = json.load(f)
 
@@ -67,22 +71,26 @@ def community_detection(config):
     print("Partition Girvan-Newman, " + str(len(communities_newman_final)) + " clusters detected: ")
     pprint.pprint(communities_newman)
 
-    # modularity score
+    # Modularity score
     print("\n")
     print("Modularity score Louvain method: " + str(round(nx.algorithms.community.modularity(G, communities_louvain), 2)))
     print("Modularity score Girvan-Newman method at level " + str(count) + ": " + str(round(nx.algorithms.community.modularity(G, communities_newman_final), 2)))
 
 if __name__ == '__main__':
 
+    # Read default username from ../config.json
+    with open('../config.json') as config_file:
+        conf = json.load(config_file)
+    default_username = conf['username']
+
     parser = argparse.ArgumentParser()
 
-    # input parameters
-    parser.add_argument('--username', type=str)
-    parser.add_argument('--input_txt_file', type=str)
-    parser.add_argument('--input_json_file', type=str)
-    parser.add_argument('--include_me', type=str2bool)
+    # Input parameters with help and defaults
+    parser.add_argument('--username', type=str, default=default_username, help='Username (default from ../config.json)')
+    parser.add_argument('--input_txt_file', type=str, default='relations.txt', help='Input TXT file (default: relations.txt)')
+    parser.add_argument('--input_json_file', type=str, default='relations.json', help='Input JSON file (default: relations.json)')
+    parser.add_argument('--include_me', type=str2bool, default=False, help='Include yourself in the analysis (default: False)')
 
     config = parser.parse_args()
 
     community_detection(config)
-
