@@ -79,14 +79,16 @@ try:
             else:
                 os.system('sed -i "" -e "1d" my_followers_left.txt')
 
-            print("Exit now if necessary\r", end="")
-            time.sleep(wait_time)
-
             if max_count > 0:
                 max_count -= 1
                 if max_count == 0:
                     print("Max count reached. Exiting.")
                     break
+                
+            print("Exit now if necessary\r", end="")
+            time.sleep(wait_time)
+
+            
 
 except Exception as e:
     print(f"Error: {e}")
