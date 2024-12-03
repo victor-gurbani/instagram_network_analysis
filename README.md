@@ -35,7 +35,7 @@ python3 get_my_followers.py
 python3 get_relations.py --wait-time 10
 python3 relations_to_json.py
 ```
-_--wait-time can be ommited but set it to a high value in seconds to avoid detection_
+_--wait-time can be ommited but set it to a high value in seconds to avoid detection. Use --max-count to set a limit on how many users to scrape (progress is saved and can be resumed directly)_
 
 To monitor the scraping you can `tail -F relations.txt `
 
