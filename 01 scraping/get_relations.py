@@ -12,8 +12,10 @@ print("Starting")
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('--wait-time', type=int, default=10, help='Time to wait between processing people, in seconds (default: 10)')
+parser.add_argument('--max-count', type=int, default=-1, help='Maximum number of followers to process before exiting (default: -1 for no limit)')
 args = parser.parse_args()
 wait_time = args.wait_time
+max_count = args.max_count
 
 with open('../config.json') as config_file:
     config = json.load(config_file)
@@ -79,6 +81,12 @@ try:
 
             print("Exit now if necessary\r", end="")
             time.sleep(wait_time)
+
+            if max_count > 0:
+                max_count -= 1
+                if max_count == 0:
+                    print("Max count reached. Exiting.")
+                    break
 
 except Exception as e:
     print(f"Error: {e}")
