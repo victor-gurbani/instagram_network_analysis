@@ -1,3 +1,62 @@
-Step by step guide on how to use the code and interpret the results: https://medium.com/@maximpiessen/how-i-visualised-my-instagram-network-and-what-i-learned-from-it-d7cc125ef297
+# Instagram Network Analysis
 
-For the program to work, the instagram window must remain partially visible.
+_I do not make myself responsible for any consequences to Instagram Accounts after using this project._
+_Instagram might find it suspicious, to avoid errors add 2FA and use instaloader cookie auth_
+
+## Step 0
+
+Clone the repo:
+```bash
+git clone https://github.com/victor-gurbani/instagram_network_analysis/
+```
+Install the dependencies:
+```bash
+pip install instaloader -U
+pip install requirements.txt
+```
+And set your Instagram username in the config.json file.
+```bash
+nano config.json
+```
+
+## Step 1
+
+Login to Instagram either using
+
+ 1. Instaloader CLI: `instaloader --login=USERNAME`
+ 2. Your preferred browser and run: `pip install browser-cookie3 -U && instaloader --load-cookies=BROWSER` _where BROWSER is chrome, firefox, safari, etc..._
+
+## Step 2 
+
+Start scraping your profile and your followers followers:
+```bash
+cd 01\ scraping/
+python3 get_my_followers.py
+python3 get_relations.py --wait-time 10
+python3 relations_to_json.py
+```
+_--wait-time can be ommited but set it to a high value in seconds to avoid detection_
+
+## Step 3 
+
+Finised! Now visualise it and process the data!
+
+Go to the corresponding folder `02 visual` and copy the relations.json file:
+```bash
+cd 02\ visual/ && cp ../01\ scraping/relations.json relations.json
+```
+and _start_ or _open_ `index.html` in your preferred browser (with JS enabled).
+
+## Step 4 (optional)
+
+Analyse the data
+
+First go to the third folder copying the data:
+```bash
+cd 03\ analysis/ && cp ../01\ scraping/relations.* ./
+```
+And run the analysis scripts! (idk if the community detection works but the other two work fine)
+
+---
+
+Original step by step guide on how to use the code and interpret the results: https://medium.com/@maximpiessen/how-i-visualised-my-instagram-network-and-what-i-learned-from-it-d7cc125ef297
