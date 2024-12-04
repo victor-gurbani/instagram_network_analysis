@@ -43,7 +43,7 @@ To monitor the scraping you can `tail -F relations.txt `
 
 ## Step 3 
 
-Finised! Now visualise it and process the data!
+Finised! Now **visualise it and process the data!**
 
 Go to the corresponding folder `02 visual` and copy the relations.json file:
 ```bash
@@ -53,7 +53,7 @@ and _start_ or _open_ `index.html` in your preferred browser (with JS enabled).
 
 ## Step 4 (optional)
 
-Analyse the data
+**Analyse the data**
 
 First go to the third folder copying the data:
 ```bash
