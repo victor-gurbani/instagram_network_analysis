@@ -10,6 +10,7 @@ _Instagram might find it suspicious to use bots. To avoid errors, add 2FA and us
 Clone the repo:
 ```bash
 git clone https://github.com/victor-gurbani/instagram_network_analysis/
+cd instagram_network_analysis 
 ```
 Install the dependencies:
 ```bash
