@@ -23,7 +23,7 @@ Install the dependencies:
 pip install instaloader -U
 pip install requirements.txt
 ```
-And set your Instagram username in the config.json file.
+And set your Instagram username *and browser user-agent* in the config.json file.
 ```bash
 nano config.json
 ```

@@ -20,8 +20,9 @@ max_count = args.max_count
 with open('../config.json') as config_file:
     config = json.load(config_file)
     username = config['username']
+    user_agent = config.get('user_agent', None)
 
-L = instaloader.Instaloader()
+L = instaloader.Instaloader(user_agent=user_agent)
 L.load_session_from_file(username)
 relations_file = 'relations.txt'
 my_followers = []
