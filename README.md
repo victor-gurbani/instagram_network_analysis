@@ -1,9 +1,10 @@
 # Instagram Network Analysis (Updated 2024)
 
 _I do not make myself responsible for any consequences to Instagram Accounts after using this project._\
-_Instagram might find it suspicious to use bots. To avoid errors, add 2FA and use instaloader carefully._
+_Instagram might find it suspicious to use bots. To avoid errors, add 2FA and use Instaloader carefully._
 
-**Build an interactive network of your instagram followers and their relations in 3 easy steps! (and quite some time)**
+**Build an interactive network of your Instagram followers and their relations in 3 easy steps! (and quite some time)**
+_Proof of concept. Use at your own responsibility, as it may violate Instagram's TOS._
 
 ## Step 0
 
@@ -38,13 +39,13 @@ python3 get_my_followers.py
 python3 get_relations.py --wait-time 10
 python3 relations_to_json.py
 ```
-_--wait-time can be ommited but set it to a high value in seconds to avoid detection. Use --max-count to set a limit on how many users to scrape (progress is saved and can be resumed directly)_
+_--wait-time can be omitted but set it to a high value in seconds to avoid detection. Use --max-count to set a limit on how many users to scrape (progress is saved and can be resumed directly)_
 
 To monitor the scraping you can `tail -F relations.txt `
 
 ## Step 3 
 
-Finised! Now **visualise it and process the data!**
+Finished! Now **visualise it and process the data!**
 
 Go to the corresponding folder `02 visual` and copy the relations.json file:
 ```bash
@@ -56,7 +57,7 @@ and _start_ or _open_ `index.html` in your preferred browser (with JS enabled).
 
 **Analyse the data**
 
-First go to the third folder copying the data:
+First, go to the third folder copying the data:
 ```bash
 cd 03\ analysis/ && cp ../01\ scraping/relations.* ./
 ```
@@ -64,4 +65,4 @@ And run the analysis scripts! (idk if the community detection works but the othe
 
 ---
 
-Original step by step guide on how to use the code and interpret the results: https://medium.com/@maximpiessen/how-i-visualised-my-instagram-network-and-what-i-learned-from-it-d7cc125ef297
+Original step-by-step guide on how to use the code and interpret the results: https://medium.com/@maximpiessen/how-i-visualised-my-instagram-network-and-what-i-learned-from-it-d7cc125ef297
