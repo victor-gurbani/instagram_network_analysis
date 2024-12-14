@@ -2,6 +2,10 @@
 
 **Build an interactive network of your Instagram followers and their relations in 3 easy steps! (and quite some time)**
 
+<sub>Example:</sub>\
+![alt text](exampleNetwork.jpg "Example Interactive Network")\
+<sup>Source: Medium page (shown below)</sup>
+
 > [!NOTE]
 > _Proof of concept. Use at your own responsibility, as it may violate Instagram's TOS._\
 > _I do not take responsibility for any consequences to Instagram accounts after using this project._\
