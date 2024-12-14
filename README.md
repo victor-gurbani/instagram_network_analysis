@@ -1,10 +1,11 @@
 # Instagram Network Analysis (Updated 2024)
 
+**Build an interactive network of your Instagram followers and their relations in 3 easy steps! (and quite some time)**
+
+> [!NOTE]
+_Proof of concept. Use at your own responsibility, as it may violate Instagram's TOS._\
 _I do not make myself responsible for any consequences to Instagram Accounts after using this project._\
 _Instagram might find it suspicious to use bots. To avoid errors, add 2FA and use Instaloader carefully._
-
-**Build an interactive network of your Instagram followers and their relations in 3 easy steps! (and quite some time)**\
-_Proof of concept. Use at your own responsibility, as it may violate Instagram's TOS._
 
 ## Step 0
 
