@@ -35,6 +35,9 @@ Login to Instagram either using
  1. Instaloader CLI: `instaloader --login=USERNAME`
  2. Your preferred browser and run: `pip install browser-cookie3 -U && instaloader --load-cookies=BROWSER` _where BROWSER is chrome, firefox, safari, etc... To avoid detection, use your browser for a few days._
 
+> [!TIP] 
+> Note down your browser full user-agent for later use
+
 ## Step 2 
 
 Start scraping your profile and your followers followers:
