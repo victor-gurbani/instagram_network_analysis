@@ -3,9 +3,9 @@
 **Build an interactive network of your Instagram followers and their relations in 3 easy steps! (and quite some time)**
 
 > [!NOTE]
-_Proof of concept. Use at your own responsibility, as it may violate Instagram's TOS._\
-_I do not make myself responsible for any consequences to Instagram Accounts after using this project._\
-_Instagram might find it suspicious to use bots. To avoid errors, add 2FA and use Instaloader carefully._
+> _Proof of concept. Use at your own responsibility, as it may violate Instagram's TOS._\
+> _I do not take responsibility for any consequences to Instagram accounts after using this project._\
+> _Instagram might find it suspicious to use bots. To avoid errors, add 2FA and use Instaloader carefully._
 
 ## Step 0
 
@@ -40,9 +40,14 @@ python3 get_my_followers.py
 python3 get_relations.py --wait-time 10
 python3 relations_to_json.py
 ```
-_--wait-time can be omitted but set it to a high value in seconds to avoid detection. Use --max-count to set a limit on how many users to scrape (progress is saved and can be resumed directly)_
+_**--wait-time** can be omitted but set it to a high value in seconds to avoid detection\
+**--max-count** to set a limit on how many users to scrape before the script exits (progress is saved and can be resumed directly)_
 
 To monitor the scraping you can `tail -F relations.txt `
+
+> [!CAUTION]
+> Errors usually occur after Instagram blocks the session due to suspecting that you are using bots.\
+> You'll need to log in again to restore the Instaloader session.
 
 ## Step 3 
 
