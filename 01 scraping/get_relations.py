@@ -69,8 +69,9 @@ try:
                     countMutual += 1
 
             print("Mutual: ", countMutual, " followees")
-            if countMutual == 0:
-                sys.exit()
+            
+            #if countMutual == 0:
+            #    sys.exit()
 
             if platform.system() == 'Windows':
                 with open('my_followers_left.txt', 'r') as f_r:
