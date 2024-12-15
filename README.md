@@ -7,9 +7,9 @@
 <sup>Source: Medium page (shown below)</sup>
 
 > [!NOTE]
-> _Proof of concept. Use at your own responsibility, as it may violate Instagram's TOS._\
-> _I do not take responsibility for any consequences to Instagram accounts after using this project._\
-> _Instagram might find it suspicious to use bots. To avoid errors, add 2FA and use Instaloader carefully._
+> _**Proof of concept. Use at your own responsibility.**_\
+> _I do not take responsibility for any consequences to Instagram accounts when using this project._\
+> _To avoid errors, add 2FA, use Instaloader carefully, and follow the tips in this document._
 
 ## Step 0
 
@@ -23,7 +23,7 @@ Install the dependencies:
 pip install instaloader -U
 pip install requirements.txt
 ```
-And set your Instagram username *and browser user-agent* in the config.json file.
+And set your Instagram username (and browser user-agent) in the config.json file.
 ```bash
 nano config.json
 ```
@@ -32,11 +32,12 @@ nano config.json
 
 Login to Instagram either using
 
- 1. Instaloader CLI: `instaloader --login=USERNAME`
- 2. Your preferred browser and run: `pip install browser-cookie3 -U && instaloader --load-cookies=BROWSER` _where BROWSER is chrome, firefox, safari, etc... To avoid detection, use your browser for a few days._
-
-> [!TIP] 
-> Add ***--user-agent*** with your browser's full user-agent when logging in with Instaloader
+ 1. Your preferred browser and run: `pip install browser-cookie3 -U && instaloader --load-cookies=BROWSER` _where BROWSER is chrome, firefox, safari, etc..._
+ 2. Instaloader CLI: `instaloader --login=USERNAME` _(not recommended)_
+    
+> [!IMPORTANT] 
+> Add ***--user-agent*** with your browser's full user-agent when logging in with Instaloader\
+> To avoid detection, use your browser for a few days before using any script.
 
 ## Step 2 
 
@@ -53,12 +54,15 @@ _**--wait-time** can be omitted but set it to a high value in seconds to avoid d
 To monitor the scraping you can `tail -F relations.txt `
 
 > [!CAUTION]
-> Errors usually occur after Instagram blocks the session due to suspecting that you are using bots.\
-> You'll need to log in again to restore the Instaloader session.
+> Errors occur after Instagram blocks the session due to suspecting that you are using bots.\
+> **You'll need to log in again to restore the Instaloader session.**
+
+> [!TIP]
+> Open your preferred browser and open Instagram. Without closing it, load the cookies (Step 1), and start the script. Do NOT close the browser window or interact with it during scraping. Use trustworthy accounts and do not use VPNs.
 
 ## Step 3 
 
-Finished! Now **visualise it and process the data!**
+Finished! Now **visualize it and process the data!**
 
 Go to the corresponding folder `02 visual` and copy the relations.json file:
 ```bash
