@@ -79,3 +79,7 @@ And run the analysis scripts! (idk if the community detection works but the othe
 ---
 
 Original step-by-step guide on how to use the code and interpret the results: https://medium.com/@maximpiessen/how-i-visualised-my-instagram-network-and-what-i-learned-from-it-d7cc125ef297
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=victor-gurbani/instagram_network_analysis&type=Date)](https://star-history.com/#victor-gurbani/instagram_network_analysis&Date)
