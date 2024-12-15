@@ -63,7 +63,7 @@ try:
             time.sleep(0.5)
             print("\rProcessing followees", end="")
 
-            animation = [' |', '/ ', ' -', ' \\']
+            animation = [' |', ' /', ' -', ' \\']
             anim_index = 0
             countMutual = 0
             for followee in tempFollowees:
@@ -76,8 +76,7 @@ try:
                     f.flush()
                     countMutual += 1
 
-            if not no_animation:
-                print(" \r", end="")  # Clear the whole line after animation (works even if animation is disabled)
+            print(" \r", end="")  # Clear the whole line after animation (works even if animation is disabled)
 
             print("Mutual: ", countMutual, " followees")
             
