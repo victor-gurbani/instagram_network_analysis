@@ -13,9 +13,11 @@ print("Starting")
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('--wait-time', type=int, default=10, help='Time to wait between processing people, in seconds (default: 10)')
 parser.add_argument('--max-count', type=int, default=-1, help='Maximum number of followers to process before exiting (default: -1 for no limit)')
+parser.add_argument('--no-animation', action='store_true', help='Disable loading animation')
 args = parser.parse_args()
 wait_time = args.wait_time
 max_count = args.max_count
+no_animation = args.no_animation
 
 with open('../config.json') as config_file:
     config = json.load(config_file)
@@ -59,14 +61,23 @@ try:
             tempFollowees = profile.get_followees()
             print("Saved followees.", end="")
             time.sleep(0.5)
-            print("\rProcessing followees...\r", end="")
+            print("\rProcessing followees", end="")
+
+            animation = ['.', '..', '...']
+            anim_index = 0
             countMutual = 0
             for followee in tempFollowees:
+                if not no_animation:
+                    print(f"\rProcessing followees{animation[anim_index % len(animation)]}", end="")
+                    anim_index += 1
                 time.sleep(0.05)
                 if followee.username.strip() in my_followers:
                     f.write(f"{follower} {followee.username}\n")
                     f.flush()
                     countMutual += 1
+
+            if not no_animation:
+                print()  # Move to the next line after animation
 
             print("Mutual: ", countMutual, " followees")
             
