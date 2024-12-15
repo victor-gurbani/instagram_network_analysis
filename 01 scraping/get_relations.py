@@ -63,7 +63,7 @@ try:
             time.sleep(0.5)
             print("\rProcessing followees", end="")
 
-            animation = ['.', '..', '...']
+            animation = ['|', '/', '-', '\\']
             anim_index = 0
             countMutual = 0
             for followee in tempFollowees:
