@@ -1,0 +1,20 @@
+# Ignore generated .txt and .json files
+*.txt
+*.json
+
+# Exclude sample config file (TODO: I'll add it later)
+!config.example.json
+
+# Ignore the actual config file
+config.json
+
+# Ignore system files
+.DS_Store
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore virtual environment directories
+venv/
+env/
