@@ -70,7 +70,10 @@ def create_graph_from_txt(my_name, include_me, input_txt_file):
     if include_me:
         G.add_node(my_name)
     else:
-        nodes.remove(my_name)
+        try:
+            nodes.remove(my_name)
+        except KeyError:
+            pass
 
     for account in nodes:
         G.add_node(account)
@@ -104,7 +107,10 @@ def create_undirected_graph_from_txt(my_name, include_me, input_txt_file):
     if include_me:
         G.add_node(my_name)
     else:
-        nodes.remove(my_name)
+        try:
+            nodes.remove(my_name)
+        except KeyError:
+            pass
 
     for account in nodes:
         G.add_node(account)
