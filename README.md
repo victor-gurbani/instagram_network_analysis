@@ -81,6 +81,12 @@ cd 03\ analysis/ && cp ../01\ scraping/relations.* ./
 And run the analysis scripts! 
 (Update 19/12 All analysis tools work fine now!)
 
+To view the community analysis run (with Louvain or Newman)
+```bash
+cd ../02\ visual/ && cp ../03\ analysis/relations_louvain.json ./relations.json
+```
+and open index.html in the browser to see the graph with the nodes coloured by communities.
+
 ---
 
 Original step-by-step guide on how to use the code and interpret the results: https://medium.com/@maximpiessen/how-i-visualised-my-instagram-network-and-what-i-learned-from-it-d7cc125ef297
