@@ -60,6 +60,8 @@ def create_graph_from_txt(my_name, include_me, input_txt_file):
     with open(input_txt_file, 'r') as f:
         for line in f:
             accounts = line.split(" ")
+            if len(accounts) < 2:
+                continue
             # account_1 = re.search('https://www.instagram.com/(.*)/', accounts[0]).group(1)
             # account_2 = re.search('https://www.instagram.com/(.*)/', accounts[1]).group(1)
             account_1 = accounts[0].strip()
@@ -95,6 +97,8 @@ def create_undirected_graph_from_txt(my_name, include_me, input_txt_file):
     with open(input_txt_file, 'r') as f:
         for line in f:
             accounts = line.split(" ")
+            if len(accounts) < 2:
+                continue
             # account_1 = re.search('https://www.instagram.com/(.*)/', accounts[0]).group(1)
             # account_2 = re.search('https://www.instagram.com/(.*)/', accounts[1]).group(1)
             account_1 = accounts[0].strip()
