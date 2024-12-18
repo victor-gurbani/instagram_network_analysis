@@ -16,27 +16,27 @@ def local_analysis(config):
     # Betweenness centrality
     bet_cen = nx.betweenness_centrality(G)
     bet_cen = sort_and_small_dict(bet_cen, 8)
-    bet_cenR = reverse_sort_and_small_dict(bet_cen, 8)
+    bet_cenR = sort_and_small_dict(bet_cen, 8)
     
     # Closeness centrality
     clo_cen = nx.closeness_centrality(G)
     clo_cen = sort_and_small_dict(clo_cen, 8)
-    clo_cenR = reverse_sort_and_small_dict(clo_cen, 8)
+    clo_cenR = sort_and_small_dict(clo_cen, 8)
     
     # In-Degree centrality
     in_deg_cen = nx.in_degree_centrality(G)
     in_deg_cen = sort_and_small_dict(in_deg_cen, 8)
-    in_deg_cenR = reverse_sort_and_small_dict(in_deg_cen, 8)
+    in_deg_cenR = sort_and_small_dict(in_deg_cen, 8)
     
     # Out-Degree centrality
     out_deg_cen = nx.out_degree_centrality(G)
     out_deg_cen = sort_and_small_dict(out_deg_cen, 8)
-    out_deg_cenR = reverse_sort_and_small_dict(out_deg_cen, 8)
+    out_deg_cenR = sort_and_small_dict(out_deg_cen, 8)
     
     # PageRank
     page_rank = nx.pagerank(G)
     page_rank = sort_and_small_dict(page_rank, 8)
-    page_rankR = reverse_sort_and_small_dict(page_rank, 8)
+    page_rankR = sort_and_small_dict(page_rank, 8)
 
     # Print centralities
     print("\n # Betweenness centrality:")

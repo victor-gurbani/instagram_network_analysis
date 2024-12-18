@@ -26,8 +26,12 @@ def fit_powerlaw(degrees, counts):
 
 
 def sort_and_small_dict(d, n):
+    # Sort the dictionary by its values in descending order
     sorted_dict = collections.OrderedDict(sorted(d.items(), key=lambda x: -x[1]))
+    
+    # Get the first n pairs from the sorted dictionary
     firstnpairs = list(sorted_dict.items())[:n]
+    
     return firstnpairs
 
 
