@@ -78,7 +78,8 @@ First, go to the third folder copying the data:
 ```bash
 cd 03\ analysis/ && cp ../01\ scraping/relations.* ./
 ```
-And run the analysis scripts! (idk if the community detection works but the other two work fine)
+And run the analysis scripts! 
+(Update 19/12 All analysis tools work fine now!)
 
 ---
 
