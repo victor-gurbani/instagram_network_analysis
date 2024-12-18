@@ -55,6 +55,8 @@ def create_graph_from_txt(my_name, include_me, input_txt_file):
     with open(input_txt_file, 'r') as f:
         for line in f:
             accounts = line.split(" ")
+            if len(accounts) < 2:
+                continue
             account_1 = accounts[0].strip()
             account_2 = accounts[1].strip()
 
@@ -87,6 +89,8 @@ def create_undirected_graph_from_txt(my_name, include_me, input_txt_file):
     with open(input_txt_file, 'r') as f:
         for line in f:
             accounts = line.split(" ")
+            if len(accounts) < 2:
+                continue
             account_1 = accounts[0].strip()
             account_2 = accounts[1].strip()
 
