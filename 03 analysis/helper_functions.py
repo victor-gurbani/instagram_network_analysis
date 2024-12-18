@@ -26,13 +26,14 @@ def fit_powerlaw(degrees, counts):
 
 
 def sort_and_small_dict(d, n):
-    # Sort the dictionary by its values in descending order
     sorted_dict = collections.OrderedDict(sorted(d.items(), key=lambda x: -x[1]))
-    
-    # Get the first n pairs from the sorted dictionary
     firstnpairs = list(sorted_dict.items())[:n]
-    
     return firstnpairs
+
+def reverse_sort_and_small_dict(d, n):
+    sorted_dict = collections.OrderedDict(sorted(d.items(), key=lambda x: x[1]))
+    firstnpairs = list(sorted_dict.items())[:n]
+    return firstnpairs[::-1]
 
 
 def centrality_to_str_arr(centrality):
@@ -59,11 +60,11 @@ def create_graph_from_txt(my_name, include_me, input_txt_file):
     with open(input_txt_file, 'r') as f:
         for line in f:
             accounts = line.split(" ")
-            if len(accounts) < 2:
-                continue
+            # account_1 = re.search('https://www.instagram.com/(.*)/', accounts[0]).group(1)
+            # account_2 = re.search('https://www.instagram.com/(.*)/', accounts[1]).group(1)
             account_1 = accounts[0].strip()
             account_2 = accounts[1].strip()
-
+            
             nodes.add(account_1)
             if include_me:
                 edges.append([account_1, account_2])
@@ -74,10 +75,8 @@ def create_graph_from_txt(my_name, include_me, input_txt_file):
     if include_me:
         G.add_node(my_name)
     else:
-        try:
+        if my_name in nodes:
             nodes.remove(my_name)
-        except KeyError:
-            pass
 
     for account in nodes:
         G.add_node(account)
@@ -96,11 +95,11 @@ def create_undirected_graph_from_txt(my_name, include_me, input_txt_file):
     with open(input_txt_file, 'r') as f:
         for line in f:
             accounts = line.split(" ")
-            if len(accounts) < 2:
-                continue
+            # account_1 = re.search('https://www.instagram.com/(.*)/', accounts[0]).group(1)
+            # account_2 = re.search('https://www.instagram.com/(.*)/', accounts[1]).group(1)
             account_1 = accounts[0].strip()
             account_2 = accounts[1].strip()
-
+            
             nodes.add(account_1)
             if include_me:
                 edges.append([account_1, account_2])
@@ -111,10 +110,8 @@ def create_undirected_graph_from_txt(my_name, include_me, input_txt_file):
     if include_me:
         G.add_node(my_name)
     else:
-        try:
+        if my_name in nodes:
             nodes.remove(my_name)
-        except KeyError:
-            pass
 
     for account in nodes:
         G.add_node(account)
