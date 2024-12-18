@@ -15,4 +15,4 @@ matplotlib
 numpy
 pprint
 FontProperties
-communities
+community

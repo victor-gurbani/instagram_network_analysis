@@ -1,7 +1,5 @@
 import argparse
-import communities as community
-from communities.algorithms import louvain_method
-from communities.algorithms import girvan_newman
+import community as community
 
 import json
 from helper_functions import *
@@ -19,7 +17,7 @@ def community_detection(config):
     G = create_undirected_graph_from_txt(my_name, include_me, input_txt_file)
 
     # LOUVAIN METHOD
-    partition_louvain = louvain_method(G)
+    partition_louvain = community.best_partition(G)
     size = float(len(set(partition_louvain.values())))
     pos = nx.spring_layout(G)
     count = 0.
