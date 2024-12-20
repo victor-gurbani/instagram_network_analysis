@@ -27,6 +27,17 @@ def relations_to_json(config):
     data = {}
     name_to_id = {}
 
+    with open(config.followers_file, 'r') as ffol:
+        for line in ffol:
+            follower = line.strip()
+            if follower:
+                nodes.add(follower)
+                if include_me:
+                    edges.add((follower, username)) # add an edge to you 
+                    nodes.add(username)
+        
+    
+
     with open(input_txt_file, 'r') as f:
         for line in f:
             accounts = line.strip().split()
@@ -88,7 +99,9 @@ if __name__ == '__main__':
     parser.add_argument('--username', type=str, default=None, help='Username to exclude from nodes (optional).')
     parser.add_argument('--input_txt_file', type=str, default='relations.txt', help='Input text file (default: relations.txt).')
     parser.add_argument('--output_json_file', type=str, default='relations.json', help='Output JSON file (default: relations.json).')
-    parser.add_argument('--include_me', type=str2bool, nargs='?', const=True, default=False, help='Include username in nodes (default: False).')
+    parser.add_argument('--include_me', type=str2bool, nargs='?', const=True, default=False, help='Include username in nodes as directed edges follower -> username (default: False).')
+    parser.add_argument('--followers_file', type=str, default='followers.txt', help='File containing your followers (default: followers.txt).')
+
     config = parser.parse_args()
     relations_to_json(config)
 
