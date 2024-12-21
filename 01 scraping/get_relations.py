@@ -119,4 +119,5 @@ with open(relations_file, 'a') as f:
                 if follower:
                     f.write(f"{follower} {username}\n")
                     f.flush()
-print("Done")
+
+print("Scraping completed successfully!")
