@@ -55,14 +55,14 @@ To monitor the scraping you can `tail -F relations.txt `
 
 > [!CAUTION]
 > Errors occur after Instagram blocks the session due to suspecting that you are using bots.\
-> **You'll need to log in again to restore the Instaloader session.**
+> **You must log in again to restore the Instaloader session.**
 
 > [!TIP]
 > Open your preferred browser and open Instagram. Without closing it, load the cookies (Step 1), and start the script. Do NOT close the browser window or interact with it during scraping. Use trustworthy accounts and do not use VPNs.
 
 ## Step 3 
 
-Finished! Now **visualize it and process the data!**
+Finished! Now **visualize the data!**
 
 Go to the corresponding folder `02 visual` and copy the relations.json file:
 ```bash
