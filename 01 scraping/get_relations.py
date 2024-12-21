@@ -105,5 +105,13 @@ try:
 except Exception as e:
     print(f"Error: {e}")
     print("Error")
+    sys.exit(1)
 
+with open(relations_file, 'a') as f:
+    with open('followers.txt', 'r') as ffol:
+            for line in ffol:
+                follower = line.strip()
+                if follower:
+                    f.write(f"{follower} {username}\n")
+                    f.flush()
 print("Done")
