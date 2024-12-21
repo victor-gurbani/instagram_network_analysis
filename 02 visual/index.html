@@ -1,72 +1,100 @@
 <!DOCTYPE html>
 <head>
       <meta charset="utf-8" />
+      <style type="text/css">
+        div.tooltip {
+          position: absolute;
+          text-align: center;
+          padding: 4px;
+          font: 12px sans-serif;
+          background: white;
+          border: 0px;
+          border-radius: 3px;
+          pointer-events: none;
+        }
+    
+        .hidden {
+          opacity: 0.2;
+        }
+    
+        /*.edge {
+          opacity: 0.2;
+        }*/
+    
+        #d3_selectable_force_directed_graph svg {
+          font: 13px sans-serif;
+          text-anchor: end;
+        }
+    
+        #d3_selectable_force_directed_graph .node {
+          stroke: #fff;
+          stroke-width: 1px;
+        }
+    
+        .node .selected {
+          stroke: black;
+        }
+    
+        .link-bi {
+          stroke: #999 !important;
+        }
+        #search-bar {
+          position: absolute;
+          top: 10px;
+          right: 10px;
+          padding: 5px;
+          font-size: 14px;
+        }
+      </style>
 </head>
-<div align='center' id="d3_selectable_force_directed_graph">
-<svg />
-</div>
+<body>
+  <input type="text" id="search-bar" placeholder="Search for a user..." />
 
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-<script src="https://d3js.org/d3.v4.js"></script>
-<script src="d3v4-brush-lite.js"></script>
-<script src="d3v4-selectable-force-directed-graph.js"></script>
+  <div align='center' id="d3_selectable_force_directed_graph">
+  <svg />
+  </div>
 
-<script>
-$(document).ready(function(){
-  var x=$(window).width();
-  var y=$(window).height();
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://d3js.org/d3.v4.js"></script>
+  <script src="d3v4-brush-lite.js"></script>
+  <script src="d3v4-selectable-force-directed-graph.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
 
-  $("#d3_selectable_force_directed_graph").css('width', x);
-  $("#d3_selectable_force_directed_graph").css('height', y);
+  <script>
+  $(document).ready(function(){
+    var x=$(window).width();
+    var y=$(window).height();
 
-  var svg = d3.select('#d3_selectable_force_directed_graph');
+    $("#d3_selectable_force_directed_graph").css('width', x);
+    $("#d3_selectable_force_directed_graph").css('height', y);
 
-  d3.json('relations.json', function(error, graph) {
-      if (!error) {
-          //console.log('graph', graph);
-          createV4SelectableForceDirectedGraph(svg, graph);
+    var svg = d3.select('#d3_selectable_force_directed_graph');
+
+    d3.json('relations.json', function(error, graph) {
+        if (!error) {
+            //console.log('graph', graph);
+            createV4SelectableForceDirectedGraph(svg, graph);
+        } else {
+            console.error(error);
+        }
+    });
+    // Search functionality
+    $('#search-bar').on('input', _.throttle(function() {
+      var query = $(this).val().toLowerCase();
+      if (query === "") {
+        svg.selectAll('.node').style('opacity', null);
+        svg.selectAll('.link').style('opacity', null);
       } else {
-          console.error(error);
+        svg.selectAll('.node').style('opacity', function(d) {
+          return d.name.toLowerCase().includes(query) ? 1 : 0.1;
+        });
+        svg.selectAll('.link').style('opacity', function(d) {
+          return d.source.name.toLowerCase().includes(query) || d.target.name.toLowerCase().includes(query) ? 1 : 0.1;
+        });
       }
+    }, 300));
   });
-});
 
-</script>
-<style type="text/css">
-  div.tooltip {
-    position: absolute;
-    text-align: center;
-    padding: 4px;
-    font: 12px sans-serif;
-    background: white;
-    border: 0px;
-    border-radius: 3px;
-    pointer-events: none;
-  }
-
-  .hidden {
-    opacity: 0.2;
-  }
-
-  /*.edge {
-    opacity: 0.2;
-  }*/
-
-  #d3_selectable_force_directed_graph svg {
-    font: 13px sans-serif;
-    text-anchor: end;
-  }
-
-  #d3_selectable_force_directed_graph .node {
-    stroke: #fff;
-    stroke-width: 1px;
-  }
-
-  .node .selected {
-    stroke: black;
-  }
-
-  .link-bi {
-    stroke: #999 !important;
-  }
-</style>
+  </script>
+  
+</body>
