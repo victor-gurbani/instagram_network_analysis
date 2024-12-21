@@ -47,10 +47,15 @@ except FileNotFoundError:
     my_followers_left = my_followers.copy()
 
 if not my_followers_left:
-    with open('my_followers_left.txt', 'w') as f:
-        for follower in my_followers:
-            f.write(f"{follower}\n")
-    my_followers_left = my_followers.copy()
+    print("Warning: 'my_followers_left.txt' is empty. Rebuilding from 'followers.txt'. It is possible the process has already finished.")
+    response = input("Do you want to rebuild 'my_followers_left.txt' from 'followers.txt'? (y/N): ").strip().lower()
+    if response == 'y':
+        with open('my_followers_left.txt', 'w') as f:
+            for follower in my_followers:
+                f.write(f"{follower}\n")
+        my_followers_left = my_followers.copy()
+    else:
+        print("Skipping rebuild of 'my_followers_left.txt'.")
 
 try:
     with open(relations_file, 'a') as f:
