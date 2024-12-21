@@ -1,13 +1,17 @@
+<div align="center">
+ 
 # Instagram Network Analysis (Updated 2024)
 
-**Build an interactive network of your Instagram followers and their relations in 3 easy steps! (and quite some time)**
+*Build an interactive network of your Instagram followers and their relations in 3 easy steps! (and quite some time)*
 
 <sub>Example:</sub>\
 ![alt text](exampleNetwork.jpg "Example Interactive Network")\
-<sup>Source: Medium page (shown below)</sup>
+<sup>Source: [Medium page](https://medium.com/@maximpiessen/how-i-visualised-my-instagram-network-and-what-i-learned-from-it-d7cc125ef297)</sup>
+
+</div>
 
 > [!NOTE]
-> _**Proof of concept. Use at your own responsibility.**_\
+> **Proof of concept. Use at your own responsibility.**\
 > _I do not take responsibility for any consequences to Instagram accounts when using this project._\
 > _To avoid errors, add 2FA, use Instaloader carefully, and follow the tips in this document._
 
@@ -36,7 +40,7 @@ Login to Instagram either using
  2. Instaloader CLI: `instaloader --login=USERNAME` _(not recommended)_
     
 > [!IMPORTANT] 
-> Add ***--user-agent*** with your browser's full user-agent when logging in with Instaloader\
+> Add ***--user-agent*** with your [browser's full user-agent](https://www.whatismybrowser.com/detect/what-is-my-user-agent/) when logging in with Instaloader\
 > To avoid detection, use your browser for a few days before using any script.
 
 ## Step 2 
@@ -68,7 +72,7 @@ Go to the corresponding folder `02 visual` and copy the relations.json file:
 ```bash
 cd 02\ visual/ && cp ../01\ scraping/relations.json relations.json
 ```
-and _start_ or _open_ `index.html` in your preferred browser (with JS enabled).
+and _start_ or _open_ `index.html` in your preferred browser (with JS enabled) (for example on [localhost:8080](http://localhost:8080/index.html)).
 
 ## Step 4 (optional)
 
@@ -85,11 +89,13 @@ To view the community analysis run (with Louvain or Newman)
 ```bash
 cd ../02\ visual/ && cp ../03\ analysis/relations_louvain.json ./relations.json
 ```
-and open index.html in the browser to see the graph with the nodes coloured by communities.
+and open [index.html](http://localhost:8080/index.html) in the browser to see the graph with the nodes coloured by communities.
 
 ---
 
-Original step-by-step guide on how to use the code and interpret the results: https://medium.com/@maximpiessen/how-i-visualised-my-instagram-network-and-what-i-learned-from-it-d7cc125ef297
+[Original step-by-step guide on how to use the code and interpret the results](https://medium.com/@maximpiessen/how-i-visualised-my-instagram-network-and-what-i-learned-from-it-d7cc125ef297)
+
+---
 
 ## Star History
 
