@@ -25,7 +25,7 @@ cd instagram_network_analysis
 Install the dependencies:
 ```bash
 pip install instaloader -U
-pip install requirements.txt
+pip install -r requirements.txt
 ```
 And set your Instagram username (and browser user-agent) in the config.json file.
 ```bash
