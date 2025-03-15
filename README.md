@@ -83,7 +83,7 @@ First, go to the third folder copying the data:
 cd 03\ analysis/ && cp ../01\ scraping/relations.* ./
 ```
 And run the analysis scripts! 
-(Update 19/12 All analysis tools work fine now!)
+(Update 19/12/24 All analysis tools work fine now!)
 
 To view the community analysis run (with Louvain or Newman)
 ```bash
