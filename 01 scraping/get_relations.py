@@ -14,10 +14,16 @@ parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('--wait-time', type=int, default=10, help='Time to wait between processing people, in seconds (default: 10)')
 parser.add_argument('--max-count', type=int, default=-1, help='Maximum number of followers to process before exiting (default: -1 for no limit)')
 parser.add_argument('--no-animation', action='store_true', help='Disable loading animation')
+parser.add_argument('--store-data', action='store_true', help='Store detailed follower data in the followers_data directory for future use')
 args = parser.parse_args()
 wait_time = args.wait_time
 max_count = args.max_count
 no_animation = args.no_animation
+store_data = args.store_data
+
+# Create followers_data directory if --store-data is enabled and directory doesn't exist
+if store_data and not os.path.exists('followers_data'):
+    os.makedirs('followers_data')
 
 with open('../config.json') as config_file:
     config = json.load(config_file)
@@ -72,15 +78,31 @@ try:
             animation = [' |', ' /', ' -', ' \\']
             anim_index = 0
             countMutual = 0
+            
+            # Create a file for storing detailed data if --store-data is enabled
+            followee_data_file = None
+            if store_data:
+                followee_data_path = f"followers_data/{profile.username}.{profile.userid}.txt"
+                followee_data_file = open(followee_data_path, 'w')
+            
             for followee in tempFollowees:
                 if not no_animation:
                     print(f"\rProcessing followees{animation[anim_index % len(animation)]}", end="")
                     anim_index += 1
+                
+                # Store the followee data if --store-data is enabled
+                if store_data and followee_data_file:
+                    followee_data_file.write(f"{followee.username}\n")
+                    
                 time.sleep(0.05)
                 if followee.username.strip() in my_followers:
                     f.write(f"{follower} {followee.username}\n")
                     f.flush()
                     countMutual += 1
+            
+            # Close the data file if it was opened
+            if store_data and followee_data_file:
+                followee_data_file.close()
 
             print(" \r", end="")  # Clear the whole line after animation (works even if animation is disabled)
 
