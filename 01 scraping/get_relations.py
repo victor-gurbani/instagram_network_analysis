@@ -41,10 +41,11 @@ try:
         my_followers_left = [line.strip() for line in f.readlines()]
 except FileNotFoundError:
     print("my_followers_left.txt not found. Creating a new file.")
+    my_followers_left = my_followers.copy()  # Create a proper copy in memory first
+    
     with open('my_followers_left.txt', 'w') as f:
-        for follower in my_followers:
+        for follower in my_followers_left:
             f.write(f"{follower}\n")
-    my_followers_left = my_followers.copy()
 
 if not my_followers_left:
     print("Warning: 'my_followers_left.txt' is empty. Rebuilding from 'followers.txt'. It is possible the process has already finished.")
