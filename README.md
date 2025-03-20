@@ -53,8 +53,8 @@ python3 get_relations.py --wait-time 10
 python3 relations_to_json.py
 ```
 _**--wait-time** can be omitted but set to a high value in seconds to avoid detection (default: 10) \
-**--max-count** to set a limit on how many users to scrape before the script exits (progress is saved and can be resumed directly)
-**--store-data** to store all scraped data in a folder for future use/analysis
+**--max-count** to set a limit on how many users to scrape before the script exits (progress is saved and can be resumed directly) \
+**--store-data** to store all scraped data in a folder for future use/analysis \
 **--no-animation** self explanatory_
 
 To monitor the scraping you can `tail -F relations.txt `
