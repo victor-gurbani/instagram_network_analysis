@@ -12,8 +12,9 @@ def community_detection(config):
     include_me = config.include_me
     input_txt_file = config.input_txt_file
     input_json_file = config.input_json_file
+    followers_file = config.followers_file # Get the new argument
 
-    G = create_undirected_graph_from_txt(my_name, include_me, input_txt_file)
+    G = create_undirected_graph_from_txt(my_name, include_me, input_txt_file, followers_file_path=followers_file)
 
     # LOUVAIN METHOD
     partition_louvain = community.best_partition(G)
@@ -101,6 +102,7 @@ if __name__ == '__main__':
     parser.add_argument('--input_txt_file', type=str, default='relations.txt', help='Input TXT file (default: relations.txt)')
     parser.add_argument('--input_json_file', type=str, default='relations.json', help='Input JSON file (default: relations.json)')
     parser.add_argument('--include_me', type=str2bool, default=False, help='Include yourself in the analysis (default: False)')
+    parser.add_argument('--followers_file', type=str, default='followers.txt', help='Path to the file containing the list of followers (default: followers.txt)')
     parser.add_argument('--output_louvain_json', type=str, default='relations_louvain.json', help='Output JSON file for Louvain method (default: relations_louvain.json)')
     parser.add_argument('--output_newman_json', type=str, default='relations_newman.json', help='Output JSON file for Girvan-Newman method (default: relations_newman.json)')
 

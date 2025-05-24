@@ -56,33 +56,57 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def _create_graph_base(my_name, include_me, input_txt_file, graph_type):
-    nodes = set()
+def _create_graph_base(my_name, include_me, input_txt_file, graph_type, followers_file_path=None):
+    nodes = set() # This will be our nodes_set
     edges = []
     G = graph_type()
 
-    with open(input_txt_file, 'r') as f:
-        for line in f:
-            accounts = line.split(" ")
-            if len(accounts) < 2:
-                continue
-            account_1 = accounts[0].strip()
-            account_2 = accounts[1].strip()
-            
-            nodes.add(account_1) # Add account_1 to nodes
-            nodes.add(account_2) # Add account_2 to nodes, ensure both are added before filtering
+    # Add nodes from followers_file_path first, if provided
+    if followers_file_path:
+        try:
+            with open(followers_file_path, 'r') as f_followers:
+                for line in f_followers:
+                    follower_username = line.strip()
+                    if follower_username: # Ensure not an empty line
+                        nodes.add(follower_username)
+            print(f"Successfully loaded {len(nodes)} initial nodes from {followers_file_path}")
+        except FileNotFoundError:
+            print(f"Warning: Followers file {followers_file_path} not found. Proceeding without it.")
+        except Exception as e:
+            print(f"Warning: Error reading {followers_file_path}: {e}. Proceeding without it.")
 
-            if include_me:
-                edges.append([account_1, account_2])
-            else:
-                if not (account_1 == my_name or account_2 == my_name):
+    # Add nodes and edges from the main input_txt_file
+    try:
+        with open(input_txt_file, 'r') as f:
+            for line in f:
+                accounts = line.split(" ")
+                if len(accounts) < 2:
+                    continue
+                account_1 = accounts[0].strip()
+                account_2 = accounts[1].strip()
+                
+                nodes.add(account_1) # Add account_1 to nodes
+                nodes.add(account_2) # Add account_2 to nodes, ensure both are added before filtering
+
+                if include_me:
                     edges.append([account_1, account_2])
+                else:
+                    if not (account_1 == my_name or account_2 == my_name):
+                        edges.append([account_1, account_2])
+    except FileNotFoundError:
+        print(f"Error: Main input file {input_txt_file} not found. Cannot build graph.")
+        return G # Return empty graph
+    except Exception as e:
+        print(f"Error: Could not read main input file {input_txt_file}: {e}. Cannot build graph.")
+        return G # Return empty graph
+
 
     # Filter my_name from nodes set if not included
     if not include_me and my_name in nodes:
         nodes.remove(my_name)
     
     # Add my_name to nodes if it's included (ensures it's in the graph even if not in edges)
+    # This also ensures 'my_name' is added even if it was only in followers_file and not relations.txt
     if include_me:
         nodes.add(my_name)
 
@@ -97,12 +121,12 @@ def _create_graph_base(my_name, include_me, input_txt_file, graph_type):
     return G
 
 
-def create_graph_from_txt(my_name, include_me, input_txt_file):
-    return _create_graph_base(my_name, include_me, input_txt_file, nx.DiGraph)
+def create_graph_from_txt(my_name, include_me, input_txt_file, followers_file_path=None): # Added followers_file_path to signature
+    return _create_graph_base(my_name, include_me, input_txt_file, nx.DiGraph, followers_file_path=followers_file_path)
 
 
-def create_undirected_graph_from_txt(my_name, include_me, input_txt_file):
-    return _create_graph_base(my_name, include_me, input_txt_file, nx.Graph)
+def create_undirected_graph_from_txt(my_name, include_me, input_txt_file, followers_file_path=None):
+    return _create_graph_base(my_name, include_me, input_txt_file, nx.Graph, followers_file_path=followers_file_path)
 
 
 CONFIG_FILE_PATH = os.path.join(os.path.dirname(__file__), '..', 'config.json')
