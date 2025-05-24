@@ -55,18 +55,18 @@ def global_analysis(config):
     print("average shortest path length %s" % (sum(path_lengths) / len(path_lengths)))
 
 
-
-# Read the username from config.json
-with open('../config.json') as config_file:
-    conf = json.load(config_file)
-    default_username = conf['username']
-
 if __name__ == '__main__':
+    default_username = get_username_from_config()
+    if default_username is None:
+        print("Error: Username could not be loaded from config. Please check config.json.")
+        # Potentially exit or set a fallback
+        pass
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('--username', type=str, default=default_username, help='The username to use')
+    parser.add_argument('--username', type=str, default=default_username, help='The username to use (default from config.json)')
     parser.add_argument('--include_me', type=str2bool, default=False, help='Whether to include yourself in the analysis')
     parser.add_argument('--input_txt_file', type=str, default='relations.txt', help='Input text file')
-    parser.add_argument('--input_json_file', type=str, default='relations.json', help='Input JSON file')
+    # input_json_file argument removed as it's not used in the script
 
     config = parser.parse_args()
     global_analysis(config)
