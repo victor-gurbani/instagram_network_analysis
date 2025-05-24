@@ -1,6 +1,6 @@
 from time import sleep
 import instaloader # Still needed for Profile.from_username
-from .insta_utils import init_instaloader # Relative import
+from insta_utils import init_instaloader # Absolute import
 
 def fetch_followers_followees():
     L_instance, session_username = init_instaloader()

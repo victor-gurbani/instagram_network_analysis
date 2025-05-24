@@ -6,7 +6,7 @@ import json
 import os
 import platform
 import argparse
-from .insta_utils import init_instaloader # Relative import
+from insta_utils import init_instaloader # Absolute import
 
 print("Starting")
 
