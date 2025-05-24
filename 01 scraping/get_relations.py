@@ -152,7 +152,7 @@ except Exception as e:
     print("Error")
     sys.exit(1)
 
-with open(relations_file, 'a') as f:
+with open(relations_file, 'a') as f_relations:
     with open('followers.txt', 'r') as ffol:
             for follower_line in ffol: # Renamed loop variable
                 current_follower = follower_line.strip() # Renamed
