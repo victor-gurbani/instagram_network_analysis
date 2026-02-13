@@ -1,6 +1,6 @@
 <div align="center">
  
-# Instagram Network Analysis (Updated 2025)
+# Instagram Network Analysis (Updated 2026)
 
 *Build an interactive network of your Instagram followers and their relations in 3 easy steps! (and quite some time)*
 
