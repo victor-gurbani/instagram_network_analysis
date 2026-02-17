@@ -754,7 +754,7 @@ if __name__ == "__main__":
     parser.add_argument("--newman_json", type=str, default="relations_newman.json")
     parser.add_argument("--kcore_json", type=str, default="relations_kcore.json")
     parser.add_argument("--output_json", type=str, default="relations_darkmatter.json")
-    parser.add_argument("--top_k_shadow", type=int, default=50)
+    parser.add_argument("--top_k_shadow", type=int, default=80)
     parser.add_argument("--jaccard_threshold", type=float, default=0.15)
 
     config = parser.parse_args()

@@ -229,11 +229,11 @@
 
     <div class="panel-section">
       <div class="section-label">Node Sizing</div>
-      <label><input type="radio" name="node-sizing" value="degree" checked /> Degree</label>
+      <label><input type="radio" name="node-sizing" value="none" checked /> None</label>
+      <label><input type="radio" name="node-sizing" value="degree" /> Degree</label>
       <label><input type="radio" name="node-sizing" value="pagerank" /> PageRank</label>
       <label><input type="radio" name="node-sizing" value="betweenness" /> Betweenness</label>
       <label><input type="radio" name="node-sizing" value="unique_reach" /> Unique Reach</label>
-      <label><input type="radio" name="node-sizing" value="none" /> None</label>
     </div>
 
     <div class="panel-section">
@@ -241,8 +241,8 @@
       <label><input type="checkbox" id="toggle-galaxy-mode" /> Enable Gravity</label>
       <label><input type="checkbox" id="toggle-free-planets" /> Unlock Planets</label>
       <label>
-        Shadow Planets: <span id="shadow-count-val">10</span>
-        <input type="range" id="slider-shadow-count" min="1" max="50" value="10" step="1" style="width:100%" />
+        Shadow Planets: <span id="shadow-count-val">30</span>
+        <input type="range" id="slider-shadow-count" min="1" max="200" value="30" step="1" style="width:100%" />
       </label>
       <label>
         Gravity Force: <span id="gravity-val">0.05</span>
@@ -306,7 +306,7 @@
 
     // ===== STATE =====
     var colorMode = 'group';
-    var nodeSizing = 'degree';
+    var nodeSizing = 'none';
     var minKCore = 0;
     var minDegree = 0;
     
@@ -314,7 +314,7 @@
     var galaxyMode = false;
     var freePlanets = false;
     var planetToNodes = {};
-    var shadowCount = 10;
+    var shadowCount = 30;
     var gravityStrength = 0.05;
 
     // Pathfinder State
