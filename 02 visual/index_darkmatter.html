@@ -15,6 +15,8 @@
     #d3_selectable_force_directed_graph svg { font: 13px sans-serif; text-anchor: end; }
     #d3_selectable_force_directed_graph .node { stroke: #fff; stroke-width: 1px; cursor: pointer; }
     .node.selected { stroke: #ffd700; stroke-width: 2px; }
+    .node.path-highlight { stroke: #00ffff; stroke-width: 3px; z-index: 1000; }
+    .link.path-highlight { stroke: #00ffff !important; stroke-width: 3px !important; stroke-opacity: 1 !important; z-index: 999; }
     .hidden { opacity: 0.2; }
     .link-bi { stroke: #999 !important; }
 
@@ -138,6 +140,49 @@
       display: none;
       box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
+
+    /* Inspection Panel */
+    #inspection-panel {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      width: 300px;
+      max-height: 400px;
+      background: rgba(26, 26, 46, 0.95);
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 16px 20px;
+      z-index: 1000;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      backdrop-filter: blur(10px);
+      display: none;
+      overflow-y: auto;
+      color: #e6edf3;
+    }
+    #inspection-panel h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #30363d;
+      padding-bottom: 6px;
+      color: #58a6ff;
+    }
+    #inspection-panel ul {
+      list-style: none;
+      padding: 0;
+    }
+    #inspection-panel li {
+      font-size: 12px;
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(48,54,61,0.5);
+      display: flex;
+      justify-content: space-between;
+    }
+    #inspection-panel li:last-child { border-bottom: none; }
+    #inspection-panel .count {
+      color: #8b949e;
+      font-size: 11px;
+    }
     .legend-labels {
       display: flex;
       justify-content: space-between;
@@ -225,6 +270,11 @@
     <div class="legend-gradient"></div>
   </div>
 
+  <div id="inspection-panel">
+    <h3>Top Shared Interests</h3>
+    <ul id="inspection-list"></ul>
+  </div>
+
   <div align="center" id="d3_selectable_force_directed_graph">
     <svg></svg>
   </div>
@@ -253,6 +303,136 @@
     var galaxyMode = false;
     var shadowCount = 10;
     var gravityStrength = 0.05;
+
+    // Pathfinder State
+    var pathStartNode = null;
+    var pathEndNode = null;
+
+    // ===== HELPER FUNCTIONS =====
+    
+    // Dijkstra/BFS for unweighted shortest path
+    function findPath(startNode, endNode) {
+        if (!startNode || !endNode) return null;
+        if (startNode.id === endNode.id) return [startNode];
+
+        var queue = [[startNode]];
+        var visited = new Set();
+        visited.add(String(startNode.id));
+        
+        // Build adjacency list (doing this on every click is fine for <5000 nodes)
+        var adj = {};
+        // Use the global 'link' selection data or the graph object if available
+        // We can access 'graph.links' if we promote it to higher scope or pass it.
+        // Let's use d3.selectAll('.link').data() to get current links
+        var currentLinks = d3v4.selectAll('.link').data();
+        
+        currentLinks.forEach(function(l) {
+            var s = l.source.id;
+            var t = l.target.id;
+            // Ensure IDs are strings for consistency
+            s = String(s);
+            t = String(t);
+            
+            if (!adj[s]) adj[s] = [];
+            if (!adj[t]) adj[t] = [];
+            adj[s].push(l.target); 
+            adj[t].push(l.source);
+        });
+
+        while (queue.length > 0) {
+            var path = queue.shift();
+            var currentNode = path[path.length - 1];
+            var currentId = String(currentNode.id);
+            
+            if (currentId === String(endNode.id)) {
+                return path;
+            }
+            
+            var neighbors = adj[currentId] || [];
+            for (var i = 0; i < neighbors.length; i++) {
+                var neighbor = neighbors[i];
+                var nId = String(neighbor.id);
+                if (!visited.has(nId)) {
+                    visited.add(nId);
+                    var newPath = path.slice();
+                    newPath.push(neighbor);
+                    queue.push(newPath);
+                }
+            }
+        }
+        return null;
+    }
+
+    function highlightPath(path) {
+        // Clear previous path
+        d3v4.selectAll('.path-highlight').classed('path-highlight', false);
+        
+        if (!path) return;
+        
+        // Highlight nodes
+        path.forEach(function(n) {
+            // Escape ID for selector if needed, but easier to select by ID attribute
+            // d3v4.select('[id="' + n.id + '"]')
+             d3v4.selectAll('.node').filter(function(d) { return d.id === n.id; })
+                 .classed('path-highlight', true);
+        });
+        
+        // Highlight edges
+        for (var i = 0; i < path.length - 1; i++) {
+            var u = path[i];
+            var v = path[i+1];
+            
+            d3v4.selectAll('.link').filter(function(d) {
+                return (d.source.id === u.id && d.target.id === v.id) ||
+                       (d.source.id === v.id && d.target.id === u.id);
+            }).classed('path-highlight', true)
+              .raise(); // Bring to front
+        }
+    }
+
+    // Culture Inspector
+    function updateInspectionPanel(selectedNodes) {
+        var $panel = $('#inspection-panel');
+        var $list = $('#inspection-list');
+        $list.empty();
+        
+        if (!selectedNodes || selectedNodes.length === 0) {
+            $panel.hide();
+            return;
+        }
+        
+        // Aggregate shadow follows
+        var counts = {};
+        var totalSelected = selectedNodes.length;
+        
+        selectedNodes.forEach(function(n) {
+            if (n.shadow_follows) {
+                n.shadow_follows.forEach(function(sName) {
+                    counts[sName] = (counts[sName] || 0) + 1;
+                });
+            }
+        });
+        
+        // Convert to array and sort
+        var sorted = Object.keys(counts).map(function(key) {
+            return { name: key, count: counts[key] };
+        }).sort(function(a, b) { return b.count - a.count; });
+        
+        // Top 20
+        var top = sorted.slice(0, 20);
+        
+        if (top.length === 0) {
+            $panel.hide(); 
+            return;
+        }
+        
+        $panel.show();
+        
+        top.forEach(function(item) {
+            var pct = Math.round((item.count / totalSelected) * 100);
+            $list.append('<li><span>' + item.name + '</span><span class="count">' + pct + '% (' + item.count + ')</span></li>');
+        });
+    }
 
     // ===== LOAD DATA =====
     d3v4.json('relations_darkmatter.json', function(error, graph) {
@@ -406,7 +586,12 @@
       var gDraw = gMain.append('g');
 
       // ===== ZOOM =====
-      var zoom = d3v4.zoom().on('zoom', function() {
+      var zoom = d3v4.zoom()
+        .filter(function() {
+            // Disable zoom if Shift is pressed (for brushing)
+            return !d3v4.event.shiftKey; 
+        })
+        .on('zoom', function() {
         gDraw.attr('transform', d3v4.event.transform);
       });
       gMain.call(zoom);
@@ -579,6 +764,48 @@
       // Initial render
       renderShadowPlanets();
 
+      // ===== SIMULATION =====
+      var simulation = d3v4.forceSimulation()
+        .force("link", d3v4.forceLink()
+                .id(function(d) { return d.id; })
+                .distance(30)
+              )
+        .force("charge", d3v4.forceManyBody().strength(-30)) // Default charge
+        .force("center", d3v4.forceCenter(parentWidth / 2, parentHeight / 2))
+        .force("x", d3v4.forceX(parentWidth/2))
+        .force("y", d3v4.forceY(parentHeight/2));
+
+      simulation
+        .nodes(graph.nodes)
+        .on("tick", ticked);
+
+      simulation.force("link")
+        .links(graph.links);
+
+      function ticked() {
+        link.attr("x1", function(d) { return d.source.x; })
+            .attr("y1", function(d) { return d.source.y; })
+            .attr("x2", function(d) { return d.target.x; })
+            .attr("y2", function(d) { return d.target.y; });
+
+        node.attr("cx", function(d) { return d.x; })
+            .attr("cy", function(d) { return d.y; });
+            
+        // Ghost links
+        ghostLink.attr("x1", function(d) { return d.sourceNode.x; })
+            .attr("y1", function(d) { return d.sourceNode.y; })
+            .attr("x2", function(d) { return d.targetNode.x; })
+            .attr("y2", function(d) { return d.targetNode.y; });
+            
+        // Gradients
+        if (typeof lingrads !== 'undefined') {
+            lingrads.attr("x1", function(d){ return d.source.x })
+                    .attr("y1", function(d){ return d.source.y; })
+                    .attr("x2", function(d){ return d.target.x; })
+                    .attr("y2", function(d){ return d.target.y; });
+        }
+      }
+
       // ===== BRUSH =====
       var brushMode = false;
       var brushing = false;
@@ -620,6 +847,15 @@
         if (!d3v4.event.sourceEvent) return;
         if (!d3v4.event.selection) return;
         if (!gBrush) return;
+
+        // Get selected nodes
+        var selectedNodes = [];
+        node.each(function(d) {
+            if (d.selected) selectedNodes.push(d);
+        });
+        
+        // Update Inspection Panel
+        updateInspectionPanel(selectedNodes);
 
         gBrush.call(brush.move, null);
 
@@ -673,6 +909,11 @@
         }
 
         d3v4.select(this).classed("selected", function(p) { d.previouslySelected = d.selected; return d.selected = true; });
+
+        // Update inspector for single selection or added selection
+        var selectedNodes = [];
+        node.each(function(n) { if (n.selected) selectedNodes.push(n); });
+        updateInspectionPanel(selectedNodes);
 
         node.filter(function(d) { return d.selected; })
           .each(function(d) {
@@ -755,7 +996,8 @@
         tooltip.style("opacity", 0);
       });
 
-      // Shadow center tooltip
+      // Shadow center tooltip logic is inside renderShadowPlanets() now.
+      /*
       shadowPlanets.on("mouseover", function(d) {
         var category;
         if (d.percentage >= 25) category = 'Major Hub';
@@ -776,12 +1018,56 @@
       shadowPlanets.on("mouseout", function() {
         tooltip.style("opacity", 0);
       });
+      */
 
       // ===== CLICK TO HIGHLIGHT EDGES =====
       var allEdges = $('.edge');
       var allNodes = $('.node');
 
       node.on("click", function(d) {
+        // Pathfinder Mode (Alt + Click)
+        if (d3v4.event.altKey) {
+            d3v4.event.stopPropagation();
+            
+            if (!pathStartNode) {
+                pathStartNode = d;
+                // Visual feedback for start node
+                d3v4.select(this).classed('path-highlight', true);
+                console.log("Path Start:", d.name);
+            } else if (!pathEndNode) {
+                if (d === pathStartNode) {
+                    // Deselect if clicking same node
+                    pathStartNode = null;
+                    d3v4.selectAll('.path-highlight').classed('path-highlight', false);
+                    return;
+                }
+                pathEndNode = d;
+                console.log("Path End:", d.name);
+                
+                // Run BFS
+                var path = findPath(pathStartNode, pathEndNode);
+                if (path) {
+                    console.log("Path found:", path.map(n => n.name));
+                    highlightPath(path);
+                } else {
+                    console.log("No path found");
+                    alert("No path found between " + pathStartNode.name + " and " + pathEndNode.name);
+                }
+                
+                // Reset for next pair
+                pathStartNode = null;
+                pathEndNode = null;
+            } else {
+                // Should not happen if we reset above, but safety clear
+                pathStartNode = d;
+                pathEndNode = null;
+                d3v4.selectAll('.path-highlight').classed('path-highlight', false);
+                d3v4.select(this).classed('path-highlight', true);
+            }
+            return;
+        }
+
+        // Standard Highlight Mode
         var id = d.id.toString();
         allEdges.removeClass('hidden');
         allNodes.removeClass('hidden');
@@ -800,8 +1086,18 @@
 
       // Show all on background click
       $('rect').on("click", function() {
+        // Clear Pathfinder
+        pathStartNode = null;
+        pathEndNode = null;
+        d3v4.selectAll('.path-highlight').classed('path-highlight', false);
+        
+        // Clear Standard Highlight
         allEdges.removeClass('hidden');
         allNodes.removeClass('hidden');
+
+        // Clear Inspection Panel
+        updateInspectionPanel([]);
+        node.classed("selected", false).each(function(d) { d.selected = false; });
       });
 
       // ===== GALAXY FORCE =====
