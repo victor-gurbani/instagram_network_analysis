@@ -233,6 +233,7 @@
       <label><input type="radio" name="node-sizing" value="pagerank" /> PageRank</label>
       <label><input type="radio" name="node-sizing" value="betweenness" /> Betweenness</label>
       <label><input type="radio" name="node-sizing" value="unique_reach" /> Unique Reach</label>
+      <label><input type="radio" name="node-sizing" value="none" /> None</label>
     </div>
 
     <div class="panel-section">
@@ -251,6 +252,7 @@
 
     <div class="panel-section">
       <div class="section-label">Analysis Tools</div>
+      <button id="btn-shake" style="width:100%; margin-bottom:6px; padding:4px; cursor:pointer;">Shake Graph</button>
       <button id="btn-diameter" style="width:100%; margin-bottom:6px; padding:4px; cursor:pointer;">Show Diameter</button>
       <label><input type="checkbox" id="toggle-unreachable" /> Fade Unreachable</label>
       <label><input type="checkbox" id="toggle-cluster-planets" /> Cluster Planets</label>
@@ -1518,6 +1520,7 @@
               case 'unique_reach': return uniqueReachScale(d.unique_reach);
               case 'pagerank': return pageRankScale(d.pagerank);
               case 'betweenness': return betweennessScale(d.betweenness);
+              case 'none': return 4;
               default: return 4;
             }
           });
@@ -1597,9 +1600,13 @@
          return farthest;
       }
 
-      $('#btn-diameter').on('click', function() {
-         calculateDiameter();
-      });
+       $('#btn-shake').on('click', function() {
+         simulation.alpha(0.8).restart();
+       });
+
+       $('#btn-diameter').on('click', function() {
+          calculateDiameter();
+       });
 
       // 2. Unreachable Nodes (Connected Components)
       function updateUnreachableVisibility() {
