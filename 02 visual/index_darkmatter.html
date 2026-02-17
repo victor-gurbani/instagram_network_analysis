@@ -687,8 +687,8 @@
         .attr("stroke-opacity", 0.3)
         .style("pointer-events", "visibleStroke");
 
-      // ===== SHADOW CENTERS GROUP (outside zoom, fixed viewport position) =====
-      var gShadowCenters = svg.append("g")
+      // ===== SHADOW CENTERS GROUP (inside gDraw, moves with zoom) =====
+      var gShadowCenters = gDraw.append("g")
         .attr("class", "shadow-centers-group")
         .style("display", "none");
 
@@ -710,7 +710,11 @@
         planets.exit().remove();
 
         var planetsEnter = planets.enter().append("g")
-          .attr("class", "shadow-planet");
+          .attr("class", "shadow-planet")
+          .call(d3v4.drag()
+            .on("start", dragstartedPlanet)
+            .on("drag", draggedPlanet)
+            .on("end", dragendedPlanet));
 
         planetsEnter.append("path")
           .attr("class", "shadow-planet-shape")
@@ -954,6 +958,43 @@
             d.fx = null;
             d.fy = null;
           });
+      }
+
+      // ===== PLANET DRAG =====
+      function dragstartedPlanet(d) {
+        if (!d3v4.event.active && galaxyMode) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+      }
+
+      function draggedPlanet(d) {
+        d.fx = d3v4.event.x;
+        d.fy = d3v4.event.y;
+        // Also update internal x/y for immediate feedback if simulation is stopped
+        d.x = d3v4.event.x;
+        d.y = d3v4.event.y;
+        d3v4.select(this).attr("transform", "translate(" + d.x + "," + d.y + ")");
+      }
+
+      function dragendedPlanet(d) {
+        if (!d3v4.event.active && galaxyMode) simulation.alphaTarget(0);
+        // If in galaxy mode, release to physics. 
+        // If in fixed mode, we might want them to stay where dropped? 
+        // The plan says: "dragended: clear fx, fy (or keep fixed if desired? Let's clear to return to physics)."
+        
+        if (galaxyMode || freePlanets) {
+            d.fx = null;
+            d.fy = null;
+        } else {
+            // In circle mode, they are fixed by renderShadowPlanets.
+            // If we want them to stick where dragged, we keep fx/fy or update the underlying layout.
+            // But renderShadowPlanets calculates positions based on index. 
+            // Let's just release them. They will snap back if re-rendered, 
+            // but since they are not in the simulation in circle mode (no force ticked for them),
+            // they will just stay where they are until re-rendered (e.g. on resize or slider change).
+            d.fx = null; 
+            d.fy = null;
+        }
       }
 
       // ===== TOOLTIP =====
