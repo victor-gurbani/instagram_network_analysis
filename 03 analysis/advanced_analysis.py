@@ -225,6 +225,11 @@ def advanced_analysis(config):
                 node_item["color"] = kcore_groups[name]
                 # Keep original group or set to something neutral if needed,
                 # but 'color' property takes precedence in the JS.
+
+                k_val = core_numbers.get(name, 0)
+                node_item["k_core"] = k_val
+                node_item["group"] = k_val
+
                 filtered_nodes.append(node_item)
 
         relations_data["nodes"] = filtered_nodes

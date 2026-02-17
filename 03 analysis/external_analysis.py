@@ -46,6 +46,63 @@ def external_analysis(config):
             f"Community data not found ({louvain_path}). Proceeding with global analysis only."
         )
 
+    # Load Newman community data if available
+    newman_path = config.newman_json
+    newman_map = {}
+    if os.path.exists(newman_path):
+        try:
+            with open(newman_path, "r") as f:
+                n_data = json.load(f)
+            for node in n_data.get("nodes", []):
+                if "name" in node:
+                    newman_map[node["name"]] = node.get("group", 0)
+            print(f"Loaded Newman data for {len(newman_map)} nodes.")
+        except Exception as e:
+            print(f"Error reading Newman data: {e}")
+
+    # Load K-Core data if available
+    kcore_path = config.kcore_json
+    kcore_map = {}
+    if os.path.exists(kcore_path):
+        try:
+            with open(kcore_path, "r") as f:
+                k_data = json.load(f)
+            for node in k_data.get("nodes", []):
+                if "name" in node:
+                    kcore_map[node["name"]] = node.get("k_core", node.get("group", 0))
+            print(f"Loaded K-Core data for {len(kcore_map)} nodes.")
+        except Exception as e:
+            print(f"Error reading K-Core data: {e}")
+
+    # Calculate Centrality Metrics (PageRank, Betweenness)
+    print("\nCalculating Centrality Metrics...")
+    try:
+        pagerank = nx.pagerank(G_undirected)
+        print("PageRank calculated.")
+    except Exception as e:
+        print(f"Error calculating PageRank: {e}")
+        pagerank = {}
+
+    try:
+        # Betweenness can be slow, maybe limit k?
+        # For now, full calculation as graph is likely small (<2k nodes usually for this tool)
+        betweenness = nx.betweenness_centrality(G_undirected)
+        print("Betweenness Centrality calculated.")
+    except Exception as e:
+        print(f"Error calculating Betweenness: {e}")
+        betweenness = {}
+
+    # Calculate K-Core if not loaded
+    if not kcore_map:
+        print("Calculating K-Core values...")
+        try:
+            # G_undirected needs to be potentially cleaned of self-loops for core_number?
+            # nx.core_number handles it.
+            kcore_map = nx.core_number(G_undirected)
+            print("K-Core calculated.")
+        except Exception as e:
+            print(f"Error calculating K-Core: {e}")
+
     # Load external followee data
     print(f"\nLoading external followee data from {followers_data_dir}...")
     followee_sets = load_external_followees(followers_data_dir, network_members)
@@ -424,6 +481,44 @@ def external_analysis(config):
         # Update nodes
         for node in export_data["nodes"]:
             name = node.get("name")
+
+            # 1. Add Centrality Metrics
+            node["pagerank"] = float(f"{pagerank.get(name, 0):.6f}")
+            node["betweenness"] = float(f"{betweenness.get(name, 0):.6f}")
+
+            # 2. Add Groups (Louvain, Newman, K-Core)
+            if name in community_map:
+                node["louvain_group"] = community_map[name]
+            # If not in map, maybe keep original "group" if it was Louvain?
+            # But "relations.json" usually has raw groups or 1.
+
+            if name in newman_map:
+                node["newman_group"] = newman_map[name]
+            else:
+                node["newman_group"] = 0  # Default
+
+            if name in kcore_map:
+                node["k_core"] = kcore_map[name]
+            else:
+                node["k_core"] = 0
+
+            # 3. Calculate Tribe Loyalty (Internal Density)
+            # Loyalty = (neighbors in same community) / (total degree)
+            # Use Louvain community for this definition of "Tribe"
+            if name in community_map and name in G_undirected:
+                my_comm = community_map[name]
+                neighbors = list(G_undirected.neighbors(name))
+                if len(neighbors) > 0:
+                    same_tribe_count = sum(
+                        1 for n in neighbors if community_map.get(n) == my_comm
+                    )
+                    tribe_loyalty = same_tribe_count / len(neighbors)
+                else:
+                    tribe_loyalty = 0.0
+                node["tribe_loyalty"] = float(f"{tribe_loyalty:.4f}")
+            else:
+                node["tribe_loyalty"] = 0.0
+
             if name in reach_map:
                 node["unique_reach"] = reach_map[name]["unique"]
                 node["total_external_reach"] = reach_map[name]["total"]
@@ -520,6 +615,8 @@ if __name__ == "__main__":
         "--followers_data_dir", type=str, default="../01 scraping/followers_data/"
     )
     parser.add_argument("--louvain_json", type=str, default="relations_louvain.json")
+    parser.add_argument("--newman_json", type=str, default="relations_newman.json")
+    parser.add_argument("--kcore_json", type=str, default="relations_kcore.json")
     parser.add_argument("--output_json", type=str, default="relations_darkmatter.json")
     parser.add_argument("--top_k_shadow", type=int, default=50)
     parser.add_argument("--jaccard_threshold", type=float, default=0.15)
