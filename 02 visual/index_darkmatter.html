@@ -238,6 +238,7 @@
     <div class="panel-section">
       <div class="section-label">Galaxy Mode</div>
       <label><input type="checkbox" id="toggle-galaxy-mode" /> Enable Gravity</label>
+      <label><input type="checkbox" id="toggle-free-planets" /> Unlock Planets</label>
       <label>
         Shadow Planets: <span id="shadow-count-val">10</span>
         <input type="range" id="slider-shadow-count" min="1" max="50" value="10" step="1" style="width:100%" />
@@ -309,6 +310,8 @@
     
     // Galaxy Mode State
     var galaxyMode = false;
+    var freePlanets = false;
+    var planetToNodes = {};
     var shadowCount = 10;
     var gravityStrength = 0.05;
 
@@ -791,6 +794,9 @@
         .links(graph.links);
 
       function ticked() {
+        // Free Planets Physics
+        updateFreePlanets();
+
         link.attr("x1", function(d) { return d.source.x; })
             .attr("y1", function(d) { return d.source.y; })
             .attr("x2", function(d) { return d.target.x; })
@@ -1158,10 +1164,160 @@
         return force;
       }
 
+      // ===== FREE PLANETS LOGIC =====
+      var planetSimilarities = null;
+
+      function buildPlanetMap() {
+        planetToNodes = {};
+        graph.nodes.forEach(function(n) {
+          if (n.shadow_follows) {
+            n.shadow_follows.forEach(function(pName) {
+              if (!planetToNodes[pName]) planetToNodes[pName] = [];
+              planetToNodes[pName].push(n);
+            });
+          }
+        });
+
+        // Pre-calculate similarities if needed for peer force
+        // We can reuse the logic from clusterPlanets but store it in a matrix
+        planetSimilarities = {};
+        var planetFollowers = {};
+        
+        // Build sets
+        shadowCentersData.forEach(function(p) { planetFollowers[p.name] = new Set(); });
+        d3v4.selectAll('.node').data().forEach(function(n) {
+            if (n.shadow_follows) {
+                n.shadow_follows.forEach(function(pName) {
+                    if (planetFollowers[pName]) planetFollowers[pName].add(n.id);
+                });
+            }
+        });
+
+        // Calculate pairwise Jaccard
+        for(var i=0; i<shadowCentersData.length; i++) {
+            for(var j=i+1; j<shadowCentersData.length; j++) {
+                var p1 = shadowCentersData[i];
+                var p2 = shadowCentersData[j];
+                var set1 = planetFollowers[p1.name];
+                var set2 = planetFollowers[p2.name];
+                
+                var intersection = 0;
+                set1.forEach(function(val) { if(set2.has(val)) intersection++; });
+                var union = set1.size + set2.size - intersection;
+                var score = union === 0 ? 0 : intersection / union;
+                
+                var key = p1.name < p2.name ? p1.name + "|" + p2.name : p2.name + "|" + p1.name;
+                planetSimilarities[key] = score;
+            }
+        }
+      }
+
+      function updateFreePlanets() {
+        if (!freePlanets || !galaxyMode) return;
+        
+        var alpha = simulation.alpha();
+        var padding = 50;
+
+        // 1. Audience Gravity
+        shadowCentersData.forEach(function(planet) {
+            if (!planetToNodes[planet.name]) return;
+            var followers = planetToNodes[planet.name];
+            var cx = 0, cy = 0, count = 0;
+            
+            followers.forEach(function(n) {
+                // Use current position of nodes
+                cx += n.x;
+                cy += n.y;
+                count++;
+            });
+            
+            if (count > 0) {
+                cx /= count;
+                cy /= count;
+                // Pull towards audience center
+                planet.x += (cx - planet.x) * 0.08 * alpha;
+                planet.y += (cy - planet.y) * 0.08 * alpha;
+            }
+        });
+
+        // 2. Peer Force (Repulsion + Attraction)
+        for (var i = 0; i < shadowCentersData.length; i++) {
+            for (var j = i + 1; j < shadowCentersData.length; j++) {
+                var p1 = shadowCentersData[i];
+                var p2 = shadowCentersData[j];
+                var dx = p1.x - p2.x;
+                var dy = p1.y - p2.y;
+                var dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                
+                // Collision radius
+                var r = 50; 
+                
+                if (dist < r) {
+                    // Repel
+                    var force = (r - dist) / dist * 0.5 * alpha;
+                    var fx = dx * force;
+                    var fy = dy * force;
+                    p1.x += fx;
+                    p1.y += fy;
+                    p2.x -= fx;
+                    p2.y -= fy;
+                }
+                
+                // Attraction if similar
+                if (planetSimilarities) {
+                    var key = p1.name < p2.name ? p1.name + "|" + p2.name : p2.name + "|" + p1.name;
+                    var score = planetSimilarities[key] || 0;
+                    
+                    if (score > 0.1) { // Threshold
+                         var attract = (dist - r) * score * 0.05 * alpha;
+                         var ax = (dx / dist) * attract;
+                         var ay = (dy / dist) * attract;
+                         // Pull together
+                         p1.x -= ax;
+                         p1.y -= ay;
+                         p2.x += ax;
+                         p2.y += ay;
+                    }
+                }
+            }
+        }
+
+        // 3. Bounds
+        shadowCentersData.forEach(function(d) {
+            d.x = Math.max(padding, Math.min(parentWidth - padding, d.x));
+            d.y = Math.max(padding, Math.min(parentHeight - padding, d.y));
+        });
+
+        // Update Visuals
+        d3v4.selectAll("g.shadow-planet")
+            .attr("transform", function(d) {
+                return "translate(" + d.x + "," + d.y + ")";
+            });
+      }
+
       // ===== CONTROL PANEL HANDLERS =====
 
       // ... existing handlers ...
       
+      // Free Planets Toggle
+      $('#toggle-free-planets').on('change', function() {
+        freePlanets = $(this).is(':checked');
+        
+        if (freePlanets) {
+            // Enable Galaxy Mode if not already
+            if (!galaxyMode) {
+                $('#toggle-galaxy-mode').prop('checked', true).trigger('change');
+            }
+            
+            buildPlanetMap();
+            simulation.alpha(1).restart();
+        } else {
+            // Revert to circle layout
+            renderShadowPlanets();
+            simulation.alpha(0.3).restart();
+        }
+      });
+
       // Galaxy Mode Toggle
       $('#toggle-galaxy-mode').on('change', function() {
         galaxyMode = $(this).is(':checked');
