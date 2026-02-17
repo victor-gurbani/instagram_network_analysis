@@ -190,6 +190,19 @@
     </div>
 
     <div class="panel-section">
+      <div class="section-label">Galaxy Mode</div>
+      <label><input type="checkbox" id="toggle-galaxy-mode" /> Enable Gravity</label>
+      <label>
+        Shadow Planets: <span id="shadow-count-val">10</span>
+        <input type="range" id="slider-shadow-count" min="1" max="50" value="10" step="1" style="width:100%" />
+      </label>
+      <label>
+        Gravity Force: <span id="gravity-val">0.05</span>
+        <input type="range" id="slider-gravity" min="0.01" max="0.3" value="0.05" step="0.01" style="width:100%" />
+      </label>
+    </div>
+
+    <div class="panel-section">
       <div class="section-label">Filters</div>
       <label>
         Min K-Core: <span id="kcore-val">0</span>
@@ -235,6 +248,11 @@
     var nodeSizing = 'degree';
     var minKCore = 0;
     var minDegree = 0;
+    
+    // Galaxy Mode State
+    var galaxyMode = false;
+    var shadowCount = 10;
+    var gravityStrength = 0.05;
 
     // ===== LOAD DATA =====
     d3v4.json('relations_darkmatter.json', function(error, graph) {
@@ -296,13 +314,15 @@
         });
       }
 
-      // Shadow centers — top 10 by follower count
-      var shadowCentersData = [];
+      // Shadow centers — load ALL available
+      var allShadowCenters = [];
       if (graph.shadow_centers) {
-        shadowCentersData = graph.shadow_centers.slice()
-          .sort(function(a, b) { return b.follower_count - a.follower_count; })
-          .slice(0, 10);
+        allShadowCenters = graph.shadow_centers.slice()
+          .sort(function(a, b) { return b.follower_count - a.follower_count; });
       }
+
+      // Initial slice
+      var shadowCentersData = allShadowCenters.slice(0, shadowCount);
 
       // ===== SCALES =====
       var maxUniqueReach = d3v4.max(graph.nodes, function(d) { return d.unique_reach; }) || 1;
@@ -480,78 +500,84 @@
       var scCenterX = parentWidth / 2;
       var scCenterY = parentHeight / 2;
 
-      var minFC = d3v4.min(shadowCentersData, function(d) { return d.follower_count; }) || 1;
-      var maxFC = d3v4.max(shadowCentersData, function(d) { return d.follower_count; }) || 100;
+      var minFC = 1, maxFC = 100;
+      if (allShadowCenters.length > 0) {
+        minFC = d3v4.min(allShadowCenters, function(d) { return d.follower_count; });
+        maxFC = d3v4.max(allShadowCenters, function(d) { return d.follower_count; });
+      }
       var planetSizeScale = d3v4.scaleSqrt().domain([minFC, maxFC]).range([15, 25]);
 
-      var shadowPlanets = gShadowCenters.selectAll("g.shadow-planet")
-        .data(shadowCentersData)
-        .enter().append("g")
-        .attr("class", "shadow-planet")
-        .attr("transform", function(d, i) {
+      function renderShadowPlanets() {
+        var planets = gShadowCenters.selectAll("g.shadow-planet")
+          .data(shadowCentersData, function(d) { return d.name; });
+
+        planets.exit().remove();
+
+        var planetsEnter = planets.enter().append("g")
+          .attr("class", "shadow-planet");
+
+        planetsEnter.append("path")
+          .attr("class", "shadow-planet-shape")
+          .attr("fill", "#ff6b6b")
+          .attr("stroke", "#ff9999")
+          .attr("stroke-width", 1.5)
+          .attr("opacity", 0.85);
+
+        planetsEnter.append("text")
+          .attr("text-anchor", "middle")
+          .attr("fill", "#e6edf3")
+          .attr("font-size", "11px")
+          .attr("font-weight", "500");
+
+        var planetsMerge = planetsEnter.merge(planets);
+
+        // Update positions
+        planetsMerge.attr("transform", function(d, i) {
+          // Arrange in a circle
           var angle = (2 * Math.PI * i / shadowCentersData.length) - Math.PI / 2;
           var px = scCenterX + scRadius * Math.cos(angle);
           var py = scCenterY + scRadius * Math.sin(angle);
+          // Store position for force calculation
+          d.x = px;
+          d.y = py;
           return "translate(" + px + "," + py + ")";
         });
 
-      shadowPlanets.append("path")
-        .attr("d", function(d) {
-          var r = planetSizeScale(d.follower_count);
-          return d3v4.symbol().type(d3v4.symbolDiamond).size(r * r * 2)();
+        planetsMerge.select("path")
+          .attr("d", function(d) {
+            var r = planetSizeScale(d.follower_count);
+            return d3v4.symbol().type(d3v4.symbolDiamond).size(r * r * 2)();
+          });
+
+        planetsMerge.select("text")
+          .attr("dy", function(d) { return planetSizeScale(d.follower_count) + 16; })
+          .text(function(d) { return d.name + " (" + d.follower_count + ")"; });
+
+        // Tooltip logic needs to be re-bound or delegated
+        planetsMerge.on("mouseover", function(d) {
+          var category;
+          if (d.percentage >= 25) category = 'Major Hub';
+          else if (d.percentage >= 15) category = 'Notable Hub';
+          else if (d.percentage >= 5) category = 'Minor Hub';
+          else category = 'Niche Hub';
+
+          var html = '<div class="tt-name">' + d.name + '</div>';
+          html += '<div class="tt-divider"></div>';
+          html += '<div class="tt-row"><span class="tt-label">Followers</span><span class="tt-value">' + d.follower_count + '</span></div>';
+          html += '<div class="tt-row"><span class="tt-label">Network %</span><span class="tt-value">' + d.percentage.toFixed(1) + '%</span></div>';
+          html += '<div class="tt-row"><span class="tt-label">Category</span><span class="tt-value">' + category + '</span></div>';
+          tooltip.html(html)
+            .style("opacity", 1)
+            .style("left", (d3v4.event.pageX + 14) + "px")
+            .style("top", (d3v4.event.pageY - 10) + "px");
         })
-        .attr("fill", "#ff6b6b")
-        .attr("stroke", "#ff9999")
-        .attr("stroke-width", 1.5)
-        .attr("class", "shadow-planet-shape")
-        .attr("opacity", 0.85);
-
-      shadowPlanets.append("text")
-        .attr("dy", function(d) { return planetSizeScale(d.follower_count) + 16; })
-        .attr("text-anchor", "middle")
-        .attr("fill", "#e6edf3")
-        .attr("font-size", "11px")
-        .attr("font-weight", "500")
-        .text(function(d) { return d.name + " (" + d.follower_count + ")"; });
-
-      // ===== FORCE SIMULATION =====
-      var simulation = d3v4.forceSimulation()
-        .force("link", d3v4.forceLink()
-          .id(function(d) { return d.id; })
-          .distance(function(d) { return 30; })
-        )
-        .force("charge", d3v4.forceManyBody())
-        .force("center", d3v4.forceCenter(parentWidth / 2, parentHeight / 2))
-        .force("x", d3v4.forceX(parentWidth / 2))
-        .force("y", d3v4.forceY(parentHeight / 2));
-
-      simulation
-        .nodes(graph.nodes)
-        .on("tick", ticked);
-
-      simulation.force("link")
-        .links(graph.links);
-
-      function ticked() {
-        link.attr("x1", function(d) { return d.source.x; })
-            .attr("y1", function(d) { return d.source.y; })
-            .attr("x2", function(d) { return d.target.x; })
-            .attr("y2", function(d) { return d.target.y; });
-
-        node.attr("cx", function(d) { return d.x; })
-            .attr("cy", function(d) { return d.y; });
-
-        lingrads.attr("x1", function(d) { return d.source.x; })
-                .attr("y1", function(d) { return d.source.y; })
-                .attr("x2", function(d) { return d.target.x; })
-                .attr("y2", function(d) { return d.target.y; });
-
-        // Ghost links follow the nodes they connect
-        ghostLink.attr("x1", function(d) { return d.sourceNode.x; })
-                 .attr("y1", function(d) { return d.sourceNode.y; })
-                 .attr("x2", function(d) { return d.targetNode.x; })
-                 .attr("y2", function(d) { return d.targetNode.y; });
+        .on("mouseout", function() {
+          tooltip.style("opacity", 0);
+        });
       }
+
+      // Initial render
+      renderShadowPlanets();
 
       // ===== BRUSH =====
       var brushMode = false;
@@ -778,7 +804,108 @@
         allNodes.removeClass('hidden');
       });
 
+      // ===== GALAXY FORCE =====
+      // Define a custom force generator function that returns the force function
+      function forceGalaxy() {
+        var nodes;
+        var strength = gravityStrength;
+
+        function force(alpha) {
+          if (!galaxyMode) return;
+
+          // Create a map of active shadow centers for fast lookup
+          var activeShadows = {};
+          shadowCentersData.forEach(function(sc) {
+            activeShadows[sc.name] = sc;
+          });
+
+          nodes.forEach(function(d) {
+            if (d.shadow_follows && d.shadow_follows.length > 0) {
+              d.shadow_follows.forEach(function(sName) {
+                var sc = activeShadows[sName];
+                if (sc && sc.x != null && sc.y != null) {
+                  // Pull towards shadow center
+                  var dx = sc.x - d.x;
+                  var dy = sc.y - d.y;
+                  var dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                  
+                  // Apply force
+                  var k = strength * alpha;
+                  
+                  // Normalize direction and scale by strength
+                  // dx/dist is unit vector component
+                  d.vx += (dx / dist) * k;
+                  d.vy += (dy / dist) * k;
+                }
+              });
+            }
+          });
+        }
+
+        force.initialize = function(_) {
+          nodes = _;
+        };
+        
+        force.strength = function(_) {
+            return arguments.length ? (strength = +_, force) : strength;
+        };
+
+        return force;
+      }
+
       // ===== CONTROL PANEL HANDLERS =====
+
+      // ... existing handlers ...
+      
+      // Galaxy Mode Toggle
+      $('#toggle-galaxy-mode').on('change', function() {
+        galaxyMode = $(this).is(':checked');
+        
+        if (galaxyMode) {
+            // Auto-show shadow centers if not already shown
+            if (!$('#toggle-shadow-centers').is(':checked')) {
+                $('#toggle-shadow-centers').prop('checked', true).trigger('change');
+            }
+            
+            // Add galaxy force
+            simulation.force("galaxy", forceGalaxy());
+            
+            // Increase alpha to stimulate movement
+            simulation.alpha(1).restart();
+        } else {
+            // Remove galaxy force
+            simulation.force("galaxy", null);
+            simulation.alpha(0.3).restart();
+        }
+      });
+
+      // Shadow Count Slider
+      $('#slider-shadow-count').on('input change', function() {
+        shadowCount = parseInt($(this).val());
+        $('#shadow-count-val').text(shadowCount);
+        
+        // Update data slice
+        shadowCentersData = allShadowCenters.slice(0, shadowCount);
+        
+        // Re-render planets (updates their x/y positions too)
+        renderShadowPlanets();
+        
+        if (galaxyMode) {
+            simulation.alpha(0.3).restart();
+        }
+      });
+
+      // Gravity Slider
+      $('#slider-gravity').on('input change', function() {
+        gravityStrength = parseFloat($(this).val());
+        $('#gravity-val').text(gravityStrength);
+        
+        if (galaxyMode) {
+             // Re-initialize force with new strength if active
+             simulation.force("galaxy", forceGalaxy());
+             simulation.alpha(0.3).restart();
+        }
+      });
 
       var updateLegend = function() {
         var $legend = $('#dm-legend');

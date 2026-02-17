@@ -536,7 +536,11 @@ def external_analysis(config):
                 node["top_latent_jaccard"] = float(f"{top_latent_map[name][1]:.4f}")
 
         # Add global stats
-        export_data["shadow_centers"] = shadow_centers[:50]
+        top_k_shadow_centers = shadow_centers[: config.top_k_shadow]
+        export_data["shadow_centers"] = top_k_shadow_centers
+
+        # Create lookup for shadow centers to speed up processing
+        shadow_center_names = {sc["name"] for sc in top_k_shadow_centers}
 
         # Latent friendships list
         latent_list = []
@@ -550,6 +554,19 @@ def external_analysis(config):
                 }
             )
         export_data["latent_friendships"] = latent_list
+
+        # Calculate shadow_follows for each node
+        for node in export_data["nodes"]:
+            name = node.get("name")
+            if name in followee_sets:
+                my_followees = followee_sets[name]
+                # Find which of the top shadow centers this user follows
+                followed_shadows = [
+                    sc for sc in shadow_center_names if sc in my_followees
+                ]
+                node["shadow_follows"] = followed_shadows
+            else:
+                node["shadow_follows"] = []
 
         with open(config.output_json, "w") as f:
             json.dump(export_data, f, indent=4)
