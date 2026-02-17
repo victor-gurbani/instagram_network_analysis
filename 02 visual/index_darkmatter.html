@@ -172,20 +172,35 @@
     <div class="panel-title">&#127761; DARK MATTER ANALYSIS</div>
 
     <div class="panel-section">
-      <label><input type="radio" name="view-mode" value="standard" checked /> Standard View</label>
-      <label><input type="radio" name="view-mode" value="darkmatter" /> Dark Matter View</label>
-    </div>
-
-    <div class="panel-section">
-      <label><input type="checkbox" id="toggle-ghost-links" /> Show Ghost Links</label>
-      <label><input type="checkbox" id="toggle-shadow-centers" /> Show Shadow Centers</label>
+      <div class="section-label">Color By</div>
+      <label><input type="radio" name="color-mode" value="group" checked /> Standard (Group)</label>
+      <label><input type="radio" name="color-mode" value="k_core" /> K-Core (Peel)</label>
+      <label><input type="radio" name="color-mode" value="echo_chamber" /> Echo Chamber</label>
+      <label><input type="radio" name="color-mode" value="tribe_loyalty" /> Tribe Loyalty</label>
+      <label><input type="radio" name="color-mode" value="louvain" /> Louvain Community</label>
+      <label><input type="radio" name="color-mode" value="newman" /> Newman Community</label>
     </div>
 
     <div class="panel-section">
       <div class="section-label">Node Sizing</div>
       <label><input type="radio" name="node-sizing" value="degree" checked /> Degree</label>
+      <label><input type="radio" name="node-sizing" value="pagerank" /> PageRank</label>
+      <label><input type="radio" name="node-sizing" value="betweenness" /> Betweenness</label>
       <label><input type="radio" name="node-sizing" value="unique_reach" /> Unique Reach</label>
-      <label><input type="radio" name="node-sizing" value="echo_chamber" /> Echo Chamber</label>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Filters</div>
+      <label>
+        Min K-Core: <span id="kcore-val">0</span>
+        <input type="range" id="filter-kcore" min="0" max="10" value="0" step="1" style="width:100%" />
+      </label>
+      <label>
+        Min Degree: <span id="degree-val">0</span>
+        <input type="range" id="filter-degree" min="0" max="50" value="0" step="1" style="width:100%" />
+      </label>
+      <label><input type="checkbox" id="toggle-ghost-links" /> Show Ghost Links</label>
+      <label><input type="checkbox" id="toggle-shadow-centers" /> Show Shadow Centers</label>
     </div>
   </div>
 
@@ -216,24 +231,50 @@
     $("#d3_selectable_force_directed_graph").css('height', parentHeight);
 
     // ===== STATE =====
-    var currentView = 'standard';
+    var colorMode = 'group';
     var nodeSizing = 'degree';
+    var minKCore = 0;
+    var minDegree = 0;
 
     // ===== LOAD DATA =====
     d3v4.json('relations_darkmatter.json', function(error, graph) {
       if (error) { console.error(error); return; }
       if (!("links" in graph)) { console.log("Graph is missing links"); return; }
 
+      // Compute degrees for sizing and filtering
+      var degreeMap = {};
+      graph.links.forEach(function(l) {
+        // Source/Target can be objects or strings depending on d3 version/parsing stage. 
+        // Initial load is strings.
+        var s = l.source;
+        var t = l.target;
+        degreeMap[s] = (degreeMap[s] || 0) + 1;
+        degreeMap[t] = (degreeMap[t] || 0) + 1;
+      });
+
       // Flag and default dark matter attributes
       graph.nodes.forEach(function(n) {
         n._hasDM = ('unique_reach' in n);
+        // Ensure all fields exist
         if (n.unique_reach == null) n.unique_reach = 0;
-        if (n.total_external_reach == null) n.total_external_reach = 0;
-        if (n.unique_ratio == null) n.unique_ratio = 0;
+        if (n.pagerank == null) n.pagerank = 0;
+        if (n.betweenness == null) n.betweenness = 0;
+        if (n.k_core == null) n.k_core = 0;
+        if (n.tribe_loyalty == null) n.tribe_loyalty = 0;
+        if (n.louvain_group == null) n.louvain_group = n.group || 0;
+        if (n.newman_group == null) n.newman_group = 0;
         if (n.echo_chamber_score == null) n.echo_chamber_score = 0;
-        if (n.top_latent_friend == null) n.top_latent_friend = null;
-        if (n.top_latent_jaccard == null) n.top_latent_jaccard = 0;
+        
+        // Add degree to node
+        n.degree = degreeMap[n.id || n.name] || 0;
       });
+
+      // Update Slider Max Values based on data
+      var maxK = d3v4.max(graph.nodes, function(d) { return d.k_core; }) || 1;
+      var maxDeg = d3v4.max(graph.nodes, function(d) { return d.degree; }) || 10;
+      
+      $('#filter-kcore').attr('max', maxK);
+      $('#filter-degree').attr('max', maxDeg);
 
       // Name lookup
       var nameToNode = {};
@@ -265,11 +306,26 @@
 
       // ===== SCALES =====
       var maxUniqueReach = d3v4.max(graph.nodes, function(d) { return d.unique_reach; }) || 1;
-      var uniqueReachScale = d3v4.scaleSqrt().domain([0, maxUniqueReach]).range([3, 20]);
-      var echoSizeScale = d3v4.scaleLinear().domain([0, 1]).range([3, 18]);
+      var maxPageRank = d3v4.max(graph.nodes, function(d) { return d.pagerank; }) || 1;
+      var maxBetweenness = d3v4.max(graph.nodes, function(d) { return d.betweenness; }) || 1;
+      var maxDegree = d3v4.max(graph.nodes, function(d) { return d.degree; }) || 1;
+
+      var sizeScaleRange = [3, 20];
+      var uniqueReachScale = d3v4.scaleSqrt().domain([0, maxUniqueReach]).range(sizeScaleRange);
+      var pageRankScale = d3v4.scaleSqrt().domain([0, maxPageRank]).range(sizeScaleRange);
+      var betweennessScale = d3v4.scaleSqrt().domain([0, maxBetweenness]).range(sizeScaleRange);
+      var degreeScale = d3v4.scaleSqrt().domain([0, maxDegree]).range(sizeScaleRange);
+
       var echoColorScale = d3v4.scaleLinear()
         .domain([0, 0.5, 1])
         .range(['#00f5d4', '#888888', '#ff6b35']);
+        
+      var loyaltyColorScale = d3v4.scaleLinear()
+        .domain([0, 0.5, 1])
+        .range(['#ff00ff', '#888888', '#00ff00']); // Purple to Green
+
+      var kcoreColorScale = d3v4.scaleSequential(d3v4.interpolatePlasma)
+        .domain([0, d3v4.max(graph.nodes, function(d) { return d.k_core; })]);
 
       // ===== COLORS (same palette as original) =====
       var colors = ["#63b598", "#ce7d78", "#ea9e70", "#a48a9e", "#c6e1e8", "#648177" ,"#0d5ac1" ,
@@ -626,16 +682,24 @@
         var hasDM = d._hasDM;
         var html = '<div class="tt-name">' + d.name + '</div>';
         html += '<div class="tt-divider"></div>';
-        html += '<div class="tt-row"><span class="tt-label">Community</span><span class="tt-value">' + d.group + '</span></div>';
-        html += '<div class="tt-row"><span class="tt-label">Unique Reach</span><span class="tt-value">' + (hasDM ? d.unique_reach : 'N/A') + '</span></div>';
-        html += '<div class="tt-row"><span class="tt-label">External Reach</span><span class="tt-value">' + (hasDM ? d.total_external_reach : 'N/A') + '</span></div>';
-        html += '<div class="tt-row"><span class="tt-label">Echo Chamber (Local)</span><span class="tt-value">' + (hasDM ? d.echo_chamber_score.toFixed(2) : 'N/A') + '</span></div>';
-        if (d.global_echo_score !== undefined) {
-          html += '<div class="tt-row"><span class="tt-label">Global Conformity</span><span class="tt-value">' + d.global_echo_score.toFixed(2) + '</span></div>';
+        html += '<div class="tt-row"><span class="tt-label">Group</span><span class="tt-value">' + d.group + '</span></div>';
+        html += '<div class="tt-row"><span class="tt-label">K-Core</span><span class="tt-value">' + d.k_core + '</span></div>';
+        html += '<div class="tt-row"><span class="tt-label">Degree</span><span class="tt-value">' + d.degree + '</span></div>';
+        html += '<div class="tt-row"><span class="tt-label">PageRank</span><span class="tt-value">' + d.pagerank.toFixed(4) + '</span></div>';
+        html += '<div class="tt-row"><span class="tt-label">Betweenness</span><span class="tt-value">' + d.betweenness.toFixed(4) + '</span></div>';
+        
+        if (d.tribe_loyalty > 0) {
+            html += '<div class="tt-row"><span class="tt-label">Tribe Loyalty</span><span class="tt-value">' + d.tribe_loyalty.toFixed(2) + '</span></div>';
         }
+
+        if (hasDM) {
+            html += '<div class="tt-divider"></div>';
+            html += '<div class="tt-row"><span class="tt-label">Unique Reach</span><span class="tt-value">' + d.unique_reach + '</span></div>';
+            html += '<div class="tt-row"><span class="tt-label">Echo Chamber</span><span class="tt-value">' + d.echo_chamber_score.toFixed(2) + '</span></div>';
+        }
+
         if (d.top_latent_friend) {
           html += '<div class="tt-row"><span class="tt-label">Latent Friend</span><span class="tt-value">' + d.top_latent_friend + '</span></div>';
-          html += '<div class="tt-row"><span class="tt-label">&nbsp;&nbsp;Jaccard</span><span class="tt-value">' + d.top_latent_jaccard.toFixed(2) + '</span></div>';
         }
 
         tooltip.html(html)
@@ -716,16 +780,71 @@
 
       // ===== CONTROL PANEL HANDLERS =====
 
-      // View mode
-      $('input[name="view-mode"]').on('change', function() {
-        currentView = $(this).val();
-        updateNodeColors();
-        if (currentView === 'darkmatter') {
-          $('#dm-legend').fadeIn(300);
-        } else {
-          $('#dm-legend').fadeOut(200);
+      var updateLegend = function() {
+        var $legend = $('#dm-legend');
+        var $labels = $legend.find('.legend-labels');
+        var $gradient = $legend.find('.legend-gradient');
+
+        switch (colorMode) {
+          case 'echo_chamber':
+            $legend.attr('style', 'display: block !important');
+            $labels.html('<span>Maverick</span><span>Conformist</span>');
+            $gradient.css('background', 'linear-gradient(to right, #00f5d4, #888888, #ff6b35)');
+            break;
+          case 'tribe_loyalty':
+            $legend.attr('style', 'display: block !important');
+            $labels.html('<span>Butterfly</span><span>Loyalist</span>');
+            $gradient.css('background', 'linear-gradient(to right, #ff00ff, #888888, #00ff00)');
+            break;
+          case 'k_core':
+            $legend.attr('style', 'display: block !important');
+            $labels.html('<span>Periphery</span><span>Core</span>');
+            // Plasma-like gradient approx: dark blue -> purple -> red -> yellow
+            $gradient.css('background', 'linear-gradient(to right, #0d0887, #9c179e, #ed7953, #f0f921)');
+            break;
+          default:
+            $legend.attr('style', 'display: none !important');
+            break;
         }
+      };
+
+      // Color Mode
+      $('input[name="color-mode"]').on('change', function() {
+        colorMode = $(this).val();
+        updateNodeColors();
+        updateLegend();
       });
+
+      // Filter Sliders
+      $('#filter-kcore').on('input change', function() {
+        minKCore = parseInt($(this).val());
+        $('#kcore-val').text(minKCore);
+        updateVisibility();
+      });
+
+      $('#filter-degree').on('input change', function() {
+        minDegree = parseInt($(this).val());
+        $('#degree-val').text(minDegree);
+        updateVisibility();
+      });
+
+      function updateVisibility() {
+        // "Peel the onion" logic
+        // We hide nodes that don't meet criteria
+        
+        node.classed("hidden", function(d) {
+           var visible = (d.k_core >= minKCore) && (d.degree >= minDegree);
+           // Also handle search visibility if implemented... but for now simple overwrite
+           return !visible;
+        });
+
+        // Hide links if either end is hidden
+        link.classed("hidden", function(d) {
+          var sourceHidden = (d.source.k_core < minKCore) || (d.source.degree < minDegree);
+          var targetHidden = (d.target.k_core < minKCore) || (d.target.degree < minDegree);
+          return sourceHidden || targetHidden;
+        });
+      }
 
       // Ghost links toggle
       $('#toggle-ghost-links').on('change', function() {
@@ -746,24 +865,30 @@
       });
 
       function updateNodeColors() {
-        if (currentView === 'standard') {
-          node.transition().duration(500)
-            .attr("fill", function(d) { return getStandardColor(d); });
-        } else {
-          node.transition().duration(500)
-            .attr("fill", function(d) {
-              if (!d._hasDM) return "#444";
-              return echoColorScale(d.echo_chamber_score);
-            });
-        }
+        node.transition().duration(500)
+          .attr("fill", function(d) {
+            switch (colorMode) {
+              case 'group': return getStandardColor(d);
+              case 'k_core': return kcoreColorScale(d.k_core);
+              case 'echo_chamber': return echoColorScale(d.echo_chamber_score);
+              case 'tribe_loyalty': return loyaltyColorScale(d.tribe_loyalty);
+              case 'louvain': 
+                return colors[d.louvain_group % colors.length] || "#ccc";
+              case 'newman': 
+                return colors[d.newman_group % colors.length] || "#ccc";
+              default: return getStandardColor(d);
+            }
+          });
       }
 
       function updateNodeSizing() {
         node.transition().duration(500)
           .attr("r", function(d) {
             switch (nodeSizing) {
+              case 'degree': return degreeScale(d.degree);
               case 'unique_reach': return uniqueReachScale(d.unique_reach);
-              case 'echo_chamber': return echoSizeScale(d.echo_chamber_score);
+              case 'pagerank': return pageRankScale(d.pagerank);
+              case 'betweenness': return betweennessScale(d.betweenness);
               default: return 4;
             }
           });
