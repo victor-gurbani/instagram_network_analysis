@@ -9,6 +9,136 @@ from matplotlib.font_manager import FontProperties
 from helper_functions import *
 
 
+def get_community_aware_shadow_centers(
+    followee_sets, community_map, network_members, my_name, total_slots=50
+):
+    """
+    Selects shadow centers using a 'Federal' strategy:
+    - Proportional allocation of slots to communities.
+    - Minimum 2 slots per group (if size > 5).
+    - Maximum 40% of slots per group.
+    - Backfill with global top.
+    """
+    # 1. Group users by community
+    community_groups = collections.defaultdict(list)
+    users_with_data = list(followee_sets.keys())
+
+    for user in users_with_data:
+        # Default to group 0 if not in map
+        group_id = community_map.get(user, 0)
+        community_groups[group_id].append(user)
+
+    # 2. Calculate Global Counts (for backfill and tie-breaking)
+    global_counts = collections.defaultdict(int)
+    for user, followees in followee_sets.items():
+        for followee in followees:
+            if followee not in network_members and followee != my_name:
+                global_counts[followee] += 1
+
+    # 3. Allocation Strategy
+    allocations = {}
+    min_slots = 2
+    max_slots = int(total_slots * 0.4)  # 20 slots max
+
+    total_users = len(users_with_data)
+
+    # First pass: Proportional allocation with constraints
+    for group_id, members in community_groups.items():
+        if len(members) <= 5:
+            # Very small groups get 0 guaranteed slots, but their members contribute to global
+            allocations[group_id] = 0
+            continue
+
+        ratio = len(members) / total_users
+        slots = int(round(ratio * total_slots))
+
+        # Apply constraints
+        slots = max(min_slots, slots)
+        slots = min(max_slots, slots)
+
+        allocations[group_id] = slots
+
+    # 4. Local Selection
+    selected_candidates = set()
+    candidate_list = []  # List of dicts
+
+    print(f"  Selecting Shadow Centers from {len(allocations)} communities...")
+
+    for group_id, slots in allocations.items():
+        if slots == 0:
+            continue
+
+        members = community_groups[group_id]
+        local_counts = collections.defaultdict(int)
+
+        for user in members:
+            for followee in followee_sets[user]:
+                if followee not in network_members and followee != my_name:
+                    local_counts[followee] += 1
+
+        # Sort by local count
+        # If tie, use global count as tiebreaker? No, local relevance first.
+        sorted_local = sorted(local_counts.items(), key=lambda x: x[1], reverse=True)
+
+        picked_count = 0
+        for acc, count in sorted_local:
+            if picked_count >= slots:
+                break
+
+            if acc not in selected_candidates:
+                selected_candidates.add(acc)
+                candidate_list.append(
+                    {
+                        "name": acc,
+                        "follower_count": global_counts[
+                            acc
+                        ],  # Use global count for final list sorting
+                        "local_count": count,
+                        "origin_group": group_id,
+                    }
+                )
+                picked_count += 1
+
+    print(f"  Selected {len(candidate_list)} community-specific centers.")
+
+    # 5. Backfill with Global Top
+    # Sort global candidates
+    sorted_global = sorted(global_counts.items(), key=lambda x: x[1], reverse=True)
+
+    for acc, count in sorted_global:
+        if len(candidate_list) >= total_slots:
+            break
+
+        if acc not in selected_candidates:
+            selected_candidates.add(acc)
+            candidate_list.append(
+                {
+                    "name": acc,
+                    "follower_count": count,
+                    "origin_group": "global_backfill",
+                }
+            )
+
+    # 6. Final Sort and Format
+    # Sort by global popularity for the final list, as requested in plan ("Global is safer for sizing")
+    candidate_list.sort(key=lambda x: x["follower_count"], reverse=True)
+
+    # Format for return (matching original structure)
+    final_shadow_centers = []
+    denominator = len(users_with_data)
+
+    for item in candidate_list:
+        final_shadow_centers.append(
+            {
+                "name": item["name"],
+                "follower_count": item["follower_count"],
+                "percentage": (item["follower_count"] / denominator) * 100,
+            }
+        )
+
+    return final_shadow_centers[:total_slots]
+
+
 def external_analysis(config):
     my_name = config.username
     include_me = config.include_me
@@ -190,41 +320,30 @@ def external_analysis(config):
     column_labels.append("Top Jaccard Pairs")
 
     # --- 2. Shadow Centers (Passive Cultural Hubs) ---
-    print("\n\n### 2. Shadow Centers (Passive Cultural Hubs)")
+    print("\n\n### 2. Shadow Centers (Passive Cultural Hubs) [Community-Aware]")
     print("-" * 50)
+
+    # Use the new Federal selection strategy
+    shadow_centers = get_community_aware_shadow_centers(
+        followee_sets,
+        community_map,
+        network_members,
+        my_name,
+        total_slots=config.top_k_shadow,
+    )
 
     external_counts = collections.defaultdict(int)
     for user, followees in followee_sets.items():
         for followee in followees:
-            # Filter out accounts that are already in the network or is the user themselves
             if followee not in network_members and followee != my_name:
                 external_counts[followee] += 1
-
-    # Convert to list for sorting
-
-    shadow_centers = []
-    total_network_size = len(network_members)  # or len(users_with_data)?
-    # "percentage of network" implies size of network graph or size of analyzed users.
-    # We'll use len(users_with_data) as the denominator for percentage
-    denominator = len(users_with_data)
-
-    for acc, count in external_counts.items():
-        shadow_centers.append(
-            {
-                "name": acc,
-                "follower_count": count,
-                "percentage": (count / denominator) * 100,
-            }
-        )
-
-    shadow_centers.sort(key=lambda x: x["follower_count"], reverse=True)
 
     print(
         f"Found {len(external_counts)} unique external accounts followed by network members."
     )
-    print(f"\nTop {config.top_k_shadow} Shadow Centers:")
+    print(f"\nTop {config.top_k_shadow} Shadow Centers (Federated Selection):")
 
-    for i, item in enumerate(shadow_centers[: config.top_k_shadow]):
+    for i, item in enumerate(shadow_centers):
         cat = ""
         if item["percentage"] > 75:
             cat = "(Universal Hub)"
