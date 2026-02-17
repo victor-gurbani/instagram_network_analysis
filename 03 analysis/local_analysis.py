@@ -13,85 +13,70 @@ def local_analysis(config):
 
     G = create_graph_from_txt(my_name, include_me, input_txt_file)
 
-    # Betweenness centrality
-    bet_cen = nx.betweenness_centrality(G)
-    bet_cen = sort_and_small_dict(bet_cen, 8)
-    bet_cenR = nx.betweenness_centrality(G)
-    bet_cenR = reverse_sort_and_small_dict(bet_cenR, 8)
-    
-    # Closeness centrality
-    clo_cen = nx.closeness_centrality(G)
-    clo_cen = sort_and_small_dict(clo_cen, 8)
-    clo_cenR = nx.closeness_centrality(G)
-    clo_cenR = reverse_sort_and_small_dict(clo_cenR, 8)
-    
-    # Degree centrality
-    in_deg_cen = nx.in_degree_centrality(G)
-    in_deg_cen = sort_and_small_dict(in_deg_cen, 8)
-    in_deg_cenR = nx.in_degree_centrality(G)
-    in_deg_cenR = reverse_sort_and_small_dict(in_deg_cenR, 8)
-    
-    # Degree centrality
-    out_deg_cen = nx.out_degree_centrality(G)
-    out_deg_cen = sort_and_small_dict(out_deg_cen, 8)
-    out_deg_cenR = nx.out_degree_centrality(G)
-    out_deg_cenR = reverse_sort_and_small_dict(out_deg_cenR, 8)
-    
-    # Page rank
-    page_rank = nx.pagerank(G)
-    page_rank = sort_and_small_dict(page_rank, 8)
-    page_rankR = nx.pagerank(G)
-    page_rankR = reverse_sort_and_small_dict(page_rankR, 8)
+    centrality_measures = [
+        {'name': 'Betweenness Centrality', 'func': nx.betweenness_centrality},
+        {'name': 'Closeness Centrality', 'func': nx.closeness_centrality},
+        {'name': 'In-Degree Centrality', 'func': nx.in_degree_centrality},
+        {'name': 'Out-Degree Centrality', 'func': nx.out_degree_centrality},
+        {'name': 'PageRank', 'func': nx.pagerank}
+    ]
 
-    # print bet_cen, clo_cen, eig_cen, page_rank
-    print("\n # Betweenness centrality:")
-    pprint.pprint(bet_cen)
-    pprint.pprint(bet_cenR)
-    print("\n # Closeness centrality:")
-    pprint.pprint(clo_cen)
-    pprint.pprint(clo_cenR)
-    print("\n # In-Degree centrality:")
-    pprint.pprint(in_deg_cen)
-    pprint.pprint(in_deg_cenR)
-    print("\n # Out-Degree centrality:")
-    pprint.pprint(out_deg_cen)
-    pprint.pprint(out_deg_cenR)
-    print("\n # Page rank:")
-    pprint.pprint(page_rank)
-    pprint.pprint(page_rankR)
+    table_data_columns = []
+    column_labels = []
+
+    for measure_config in centrality_measures:
+        name = measure_config['name']
+        func = measure_config['func']
+        
+        print(f"\n # {name}:")
+        
+        # Calculate centrality
+        centrality_values = func(G)
+        
+        # Get top 8 and bottom 8
+        sorted_top = sort_and_small_dict(centrality_values, 8)
+        sorted_bottom = reverse_sort_and_small_dict(centrality_values, 8)
+        
+        pprint.pprint(sorted_top)
+        pprint.pprint(sorted_bottom)
+        
+        # Prepare data for table
+        table_data_columns.append(centrality_to_str_arr(sorted_top) + centrality_to_str_arr(sorted_bottom))
+        column_labels.append(name)
 
     # Table summarising results
     fig, ax = plt.subplots()
     fig.patch.set_visible(False)
     ax.axis('off')
     ax.axis('tight')
-    data = [centrality_to_str_arr(bet_cen)+centrality_to_str_arr(bet_cenR),
-            centrality_to_str_arr(clo_cen)+centrality_to_str_arr(clo_cenR),
-            centrality_to_str_arr(in_deg_cen)+centrality_to_str_arr(in_deg_cenR),
-            centrality_to_str_arr(out_deg_cen)+centrality_to_str_arr(out_deg_cenR),
-            centrality_to_str_arr(page_rank)+centrality_to_str_arr(page_rankR)]
-    data = np.transpose(data)
-    table = ax.table(colLabels=['Betweenness Centrality', 'Closeness Centrality', 'In-Degree Centrality', 'Out-Degree Centrality', 'PageRank'],
-                     cellText=data,
-                     loc='center')
-    for (row, col), cell in table.get_celld().items():
-        if (row == 0) or (col == -1):
-            cell.set_text_props(fontproperties=FontProperties(weight='bold'))
+    
+    if table_data_columns: # Ensure there's data to plot
+        data_for_table = np.transpose(table_data_columns)
+        table = ax.table(colLabels=column_labels,
+                         cellText=data_for_table,
+                         loc='center')
+        for (row, col), cell in table.get_celld().items():
+            if (row == 0) or (col == -1): # Bold header row and index column
+                cell.set_text_props(fontproperties=FontProperties(weight='bold'))
+    else:
+        print("No centrality data to display in table.")
+
     fig.tight_layout()
     plt.savefig("./centrality.png", dpi=300)
     plt.show()
 
 if __name__ == '__main__':
-    # Read default username from '../config.json'
-    with open('../config.json') as config_file:
-        conf = json.load(config_file)
-    default_username = conf['username']
+    default_username = get_username_from_config()
+    if default_username is None:
+        print("Error: Username could not be loaded from config. Please check config.json.")
+        # Potentially exit or set a fallback
+        pass
 
     parser = argparse.ArgumentParser(description='Local analysis script')
 
     # Input parameters
     parser.add_argument('--username', type=str, default=default_username,
-                        help='Username (default: value from ../config.json)')
+                        help='Username (default from config.json)')
     parser.add_argument('--input_txt_file', type=str, default='relations.txt',
                         help='Input text file (default: relations.txt)')
     parser.add_argument('--include_me', type=str2bool, nargs='?', const=True, default=False,

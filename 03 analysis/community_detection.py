@@ -5,16 +5,16 @@ import json
 from helper_functions import *
 import pprint
 
-def str2bool(v):
-    return v.lower() in ('yes', 'true', 't', '1')
+# str2bool is imported from helper_functions via *
 
 def community_detection(config):
     my_name = config.username
     include_me = config.include_me
     input_txt_file = config.input_txt_file
     input_json_file = config.input_json_file
+    followers_file = config.followers_file # Get the new argument
 
-    G = create_undirected_graph_from_txt(my_name, include_me, input_txt_file)
+    G = create_undirected_graph_from_txt(my_name, include_me, input_txt_file, followers_file_path=followers_file)
 
     # LOUVAIN METHOD
     partition_louvain = community.best_partition(G)
@@ -55,15 +55,19 @@ def community_detection(config):
 
     json_with_groups_louvain = add_cluster_to_json(input_dict, partition_louvain)
 
-    with open('relations_louvain.json', 'w+') as outfile:
+    # Use configurable output path for Louvain JSON
+    with open(config.output_louvain_json, 'w+') as outfile:
         json.dump(json_with_groups_louvain, outfile)
+    print(f"Louvain community data saved to: {config.output_louvain_json}")
 
     json_with_groups_newman = add_cluster_to_json(input_dict, partition_newman)
 
-    with open('relations_newman.json', 'w+') as outfile2:
+    # Use configurable output path for Newman JSON
+    with open(config.output_newman_json, 'w+') as outfile2:
         json.dump(json_with_groups_newman, outfile2)
+    print(f"Girvan-Newman community data saved to: {config.output_newman_json}")
 
-    print("Partition Louvain, " + str(len(communities_louvain)) + " clusters detected: ")
+    print("\nPartition Louvain, " + str(len(communities_louvain)) + " clusters detected: ")
     pprint.pprint(communities_louvain)
     print("\n")
     print("Partition Girvan-Newman, " + str(len(communities_newman_final)) + " clusters detected: ")
@@ -76,18 +80,31 @@ def community_detection(config):
 
 if __name__ == '__main__':
 
-    # Read default username from ../config.json
-    with open('../config.json') as config_file:
-        conf = json.load(config_file)
-    default_username = conf['username']
+    default_username = get_username_from_config()
+    if default_username is None:
+        # Fallback or error if username couldn't be loaded
+        # For now, let's use a placeholder or raise an error
+        # This behavior might need to be decided based on application's requirements
+        print("Error: Username could not be loaded from config. Please check config.json.")
+        # default_username = "fallback_user" # Or exit, or handle as appropriate
+        # For the purpose of this refactor, we assume config is present and valid
+        # If not, argparse will fail if default_username is None and --username is not provided.
+        # Or, we can make the script exit if default_username is None.
+        # For now, let's allow it to proceed and potentially fail at ArgumentParser if username is required.
+        # A more robust solution would be to exit if default_username is None and it's critical.
+        pass
+
 
     parser = argparse.ArgumentParser()
 
     # Input parameters with help and defaults
-    parser.add_argument('--username', type=str, default=default_username, help='Username (default from ../config.json)')
+    parser.add_argument('--username', type=str, default=default_username, help='Username (default from config.json)')
     parser.add_argument('--input_txt_file', type=str, default='relations.txt', help='Input TXT file (default: relations.txt)')
     parser.add_argument('--input_json_file', type=str, default='relations.json', help='Input JSON file (default: relations.json)')
     parser.add_argument('--include_me', type=str2bool, default=False, help='Include yourself in the analysis (default: False)')
+    parser.add_argument('--followers_file', type=str, default='followers.txt', help='Path to the file containing the list of followers (default: followers.txt)')
+    parser.add_argument('--output_louvain_json', type=str, default='relations_louvain.json', help='Output JSON file for Louvain method (default: relations_louvain.json)')
+    parser.add_argument('--output_newman_json', type=str, default='relations_newman.json', help='Output JSON file for Girvan-Newman method (default: relations_newman.json)')
 
     config = parser.parse_args()
 

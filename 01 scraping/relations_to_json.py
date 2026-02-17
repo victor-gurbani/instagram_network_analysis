@@ -1,15 +1,12 @@
 import json
 import argparse
+import sys # Added for path manipulation
+import os # Added for path manipulation
 
-def str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
+# Add the '03 analysis' directory to sys.path to allow importing helper_functions
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '03 analysis')))
+from helper_functions import str2bool
+
 
 def relations_to_json(config):
     username = config.username

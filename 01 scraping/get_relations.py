@@ -6,13 +6,26 @@ import json
 import os
 import platform
 import argparse
-import select
 import threading
+from insta_utils import init_instaloader
 
 print("Starting")
 
-# Parse command-line arguments
-parser = argparse.ArgumentParser(description="Process some integers.")
+L_instance, logged_in_username = init_instaloader()
+
+if not L_instance or not logged_in_username:
+    print("Failed to initialize Instaloader. Exiting.")
+    sys.exit(1)
+
+parser = argparse.ArgumentParser(
+    description="Get relations of a target Instagram profile."
+)
+parser.add_argument(
+    "--username",
+    type=str,
+    default=None,
+    help="Target username to get relations for (defaults to username in config.json)",
+)
 parser.add_argument(
     "--wait-time",
     type=int,
@@ -34,12 +47,26 @@ parser.add_argument(
     help="Store detailed follower data in the followers_data directory for future use",
 )
 args = parser.parse_args()
+
+target_username = args.username
 wait_time = args.wait_time
 max_count = args.max_count
 no_animation = args.no_animation
 store_data = args.store_data
 
-# If --store-data was not explicitly provided, ask the user with a 15-second timeout (defaults to yes)
+if not target_username:
+    with open("../config.json") as config_file:
+        config = json.load(config_file)
+        target_username = config.get("username")
+    if not target_username:
+        print(
+            "Error: Target username not provided in args or found in config.json. Exiting."
+        )
+        sys.exit(1)
+
+print(f"Target profile for scraping relations: {target_username}")
+print(f"Session loaded for user: {logged_in_username}")
+
 if not store_data:
     print("\n--store-data flag not provided.")
     print("Storing data saves each follower's followees to disk for future analysis.")
@@ -62,7 +89,6 @@ if not store_data:
     input_thread.join(timeout=15)
 
     if user_response[0] is None:
-        # Timeout reached, default to yes
         print("\nNo response received. Defaulting to --store-data enabled.")
         store_data = True
     else:
@@ -74,17 +100,9 @@ if not store_data:
             store_data = True
             print("--store-data enabled.")
 
-# Create followers_data directory if --store-data is enabled and directory doesn't exist
 if store_data and not os.path.exists("followers_data"):
     os.makedirs("followers_data")
 
-with open("../config.json") as config_file:
-    config = json.load(config_file)
-    username = config["username"]
-    user_agent = config.get("user_agent", None)
-
-L = instaloader.Instaloader(user_agent=user_agent)
-L.load_session_from_file(username)
 relations_file = "relations.txt"
 my_followers = []
 my_followers_left = []
@@ -100,11 +118,11 @@ try:
         my_followers_left = [line.strip() for line in f.readlines()]
 except FileNotFoundError:
     print("my_followers_left.txt not found. Creating a new file.")
-    my_followers_left = my_followers.copy()  # Create a proper copy in memory first
+    my_followers_left = my_followers.copy()
 
     with open("my_followers_left.txt", "w") as f:
-        for follower in my_followers_left:
-            f.write(f"{follower}\n")
+        for follower_in_list in my_followers_left:
+            f.write(f"{follower_in_list}\n")
 
 if not my_followers_left:
     print(
@@ -119,18 +137,20 @@ if not my_followers_left:
     )
     if response == "y":
         with open("my_followers_left.txt", "w") as f:
-            for follower in my_followers:
-                f.write(f"{follower}\n")
+            for follower_in_list in my_followers:
+                f.write(f"{follower_in_list}\n")
         my_followers_left = my_followers.copy()
     else:
         print("Skipping rebuild of 'my_followers_left.txt'.")
 
 try:
-    with open(relations_file, "a") as f:
-        for follower in my_followers_left:
-            print(f"Getting relations for {follower}")
+    with open(relations_file, "a") as f_relations:
+        for current_follower_to_process in my_followers_left:
+            print(f"Getting relations for {current_follower_to_process}")
 
-            profile = instaloader.Profile.from_username(L.context, follower)
+            profile = instaloader.Profile.from_username(
+                L_instance.context, current_follower_to_process
+            )
             tempFollowees = profile.get_followees()
             print("Saved followees.", end="")
             time.sleep(0.5)
@@ -140,7 +160,6 @@ try:
             anim_index = 0
             countMutual = 0
 
-            # Create a file for storing detailed data if --store-data is enabled
             followee_data_file = None
             if store_data:
                 followee_data_path = (
@@ -148,7 +167,7 @@ try:
                 )
                 followee_data_file = open(followee_data_path, "w")
 
-            for followee in tempFollowees:
+            for followee_profile in tempFollowees:
                 if not no_animation:
                     print(
                         f"\rProcessing followees{animation[anim_index % len(animation)]}",
@@ -156,23 +175,21 @@ try:
                     )
                     anim_index += 1
 
-                # Store the followee data if --store-data is enabled
                 if store_data and followee_data_file:
-                    followee_data_file.write(f"{followee.username}\n")
+                    followee_data_file.write(f"{followee_profile.username}\n")
 
                 time.sleep(0.05)
-                if followee.username.strip() in my_followers:
-                    f.write(f"{follower} {followee.username}\n")
-                    f.flush()
+                if followee_profile.username.strip() in my_followers:
+                    f_relations.write(
+                        f"{current_follower_to_process} {followee_profile.username}\n"
+                    )
+                    f_relations.flush()
                     countMutual += 1
 
-            # Close the data file if it was opened
             if store_data and followee_data_file:
                 followee_data_file.close()
 
-            print(
-                " \r", end=""
-            )  # Clear the whole line after animation (works even if animation is disabled)
+            print(" \r", end="")
 
             print("Mutual: ", countMutual, " followees")
 
@@ -202,12 +219,12 @@ except Exception as e:
     print("Error")
     sys.exit(1)
 
-with open(relations_file, "a") as f:
+with open(relations_file, "a") as f_relations:
     with open("followers.txt", "r") as ffol:
-        for line in ffol:
-            follower = line.strip()
-            if follower:
-                f.write(f"{follower} {username}\n")
-                f.flush()
+        for follower_line in ffol:
+            current_follower = follower_line.strip()
+            if current_follower:
+                f_relations.write(f"{current_follower} {target_username}\n")
+                f_relations.flush()
 
 print("Scraping completed successfully!")
