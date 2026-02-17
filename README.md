@@ -93,6 +93,36 @@ cd ../02\ visual/ && cp ../03\ analysis/relations_louvain.json ./relations.json
 ```
 and open [index.html](http://localhost:8080/index.html) in the browser to see the graph with the nodes coloured by communities.
 
+### Dark Matter Analysis (requires `--store-data`)
+
+If you scraped with `--store-data` (or accepted the prompt — the script asks automatically with a 15s timeout defaulting to yes), you can run the **external analysis** to uncover hidden patterns from full followee lists:
+
+```bash
+cd 03\ analysis/
+python3 external_analysis.py
+```
+
+This analyzes the "dark matter" — the full following lists of every scraped follower — to reveal:
+
+| Feature | What it finds |
+|---------|--------------|
+| **Hidden Homophily** | Pairs who follow 40%+ of the same accounts but aren't connected — "Latent Friends" who should know each other |
+| **Shadow Centers** | External accounts (brands, influencers, meme pages) that passively anchor your network's culture |
+| **2nd Degree Reach** | Who gives you access to the widest *new* audience — the structural hole brokers |
+| **Echo Chamber Score** | Who follows the same mainstream accounts as everyone else vs. the mavericks with unique taste |
+| **Interest Bridges** | People from different friend groups who secretly share the same interests |
+
+**Options:**
+_**--followers_data_dir** path to stored follower data (default: `../01 scraping/followers_data/`) \
+**--jaccard_threshold** minimum similarity to flag as latent friend (default: 0.15) \
+**--top_k_shadow** number of shadow centers to report (default: 50) \
+**--output_json** output file with enriched node data (default: `relations_darkmatter.json`)_
+
+To visualize the dark matter analysis in the D3 graph:
+```bash
+cd ../02\ visual/ && cp ../03\ analysis/relations_darkmatter.json ./relations.json
+```
+
 ---
 
 [Original step-by-step guide on how to use the code and interpret the results](https://medium.com/@maximpiessen/how-i-visualised-my-instagram-network-and-what-i-learned-from-it-d7cc125ef297)
