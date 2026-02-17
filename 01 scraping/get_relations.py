@@ -6,58 +6,119 @@ import json
 import os
 import platform
 import argparse
+import select
+import threading
 
 print("Starting")
 
 # Parse command-line arguments
-parser = argparse.ArgumentParser(description='Process some integers.')
-parser.add_argument('--wait-time', type=int, default=10, help='Time to wait between processing people, in seconds (default: 10)')
-parser.add_argument('--max-count', type=int, default=-1, help='Maximum number of followers to process before exiting (default: -1 for no limit)')
-parser.add_argument('--no-animation', action='store_true', help='Disable loading animation')
-parser.add_argument('--store-data', action='store_true', help='Store detailed follower data in the followers_data directory for future use')
+parser = argparse.ArgumentParser(description="Process some integers.")
+parser.add_argument(
+    "--wait-time",
+    type=int,
+    default=10,
+    help="Time to wait between processing people, in seconds (default: 10)",
+)
+parser.add_argument(
+    "--max-count",
+    type=int,
+    default=-1,
+    help="Maximum number of followers to process before exiting (default: -1 for no limit)",
+)
+parser.add_argument(
+    "--no-animation", action="store_true", help="Disable loading animation"
+)
+parser.add_argument(
+    "--store-data",
+    action="store_true",
+    help="Store detailed follower data in the followers_data directory for future use",
+)
 args = parser.parse_args()
 wait_time = args.wait_time
 max_count = args.max_count
 no_animation = args.no_animation
 store_data = args.store_data
 
-# Create followers_data directory if --store-data is enabled and directory doesn't exist
-if store_data and not os.path.exists('followers_data'):
-    os.makedirs('followers_data')
+# If --store-data was not explicitly provided, ask the user with a 15-second timeout (defaults to yes)
+if not store_data:
+    print("\n--store-data flag not provided.")
+    print("Storing data saves each follower's followees to disk for future analysis.")
+    print(
+        "Would you like to enable --store-data? [Y/n] (auto-yes in 15s): ",
+        end="",
+        flush=True,
+    )
 
-with open('../config.json') as config_file:
+    user_response = [None]
+
+    def get_input():
+        try:
+            user_response[0] = input()
+        except EOFError:
+            user_response[0] = ""
+
+    input_thread = threading.Thread(target=get_input, daemon=True)
+    input_thread.start()
+    input_thread.join(timeout=15)
+
+    if user_response[0] is None:
+        # Timeout reached, default to yes
+        print("\nNo response received. Defaulting to --store-data enabled.")
+        store_data = True
+    else:
+        response = user_response[0].strip().lower()
+        if response in ("n", "no"):
+            store_data = False
+            print("Proceeding without --store-data.")
+        else:
+            store_data = True
+            print("--store-data enabled.")
+
+# Create followers_data directory if --store-data is enabled and directory doesn't exist
+if store_data and not os.path.exists("followers_data"):
+    os.makedirs("followers_data")
+
+with open("../config.json") as config_file:
     config = json.load(config_file)
-    username = config['username']
-    user_agent = config.get('user_agent', None)
+    username = config["username"]
+    user_agent = config.get("user_agent", None)
 
 L = instaloader.Instaloader(user_agent=user_agent)
 L.load_session_from_file(username)
-relations_file = 'relations.txt'
+relations_file = "relations.txt"
 my_followers = []
 my_followers_left = []
 
 try:
-    with open('followers.txt') as f:
+    with open("followers.txt") as f:
         my_followers = [line.strip() for line in f.readlines()]
 except FileNotFoundError:
     print("followers.txt not found. Please make sure the file exists.")
 
 try:
-    with open('my_followers_left.txt') as f:
+    with open("my_followers_left.txt") as f:
         my_followers_left = [line.strip() for line in f.readlines()]
 except FileNotFoundError:
     print("my_followers_left.txt not found. Creating a new file.")
     my_followers_left = my_followers.copy()  # Create a proper copy in memory first
-    
-    with open('my_followers_left.txt', 'w') as f:
+
+    with open("my_followers_left.txt", "w") as f:
         for follower in my_followers_left:
             f.write(f"{follower}\n")
 
 if not my_followers_left:
-    print("Warning: 'my_followers_left.txt' is empty. Rebuilding from 'followers.txt'. It is possible the process has already finished.")
-    response = input("Do you want to rebuild 'my_followers_left.txt' from 'followers.txt'? (y/N): ").strip().lower()
-    if response == 'y':
-        with open('my_followers_left.txt', 'w') as f:
+    print(
+        "Warning: 'my_followers_left.txt' is empty. Rebuilding from 'followers.txt'. It is possible the process has already finished."
+    )
+    response = (
+        input(
+            "Do you want to rebuild 'my_followers_left.txt' from 'followers.txt'? (y/N): "
+        )
+        .strip()
+        .lower()
+    )
+    if response == "y":
+        with open("my_followers_left.txt", "w") as f:
             for follower in my_followers:
                 f.write(f"{follower}\n")
         my_followers_left = my_followers.copy()
@@ -65,7 +126,7 @@ if not my_followers_left:
         print("Skipping rebuild of 'my_followers_left.txt'.")
 
 try:
-    with open(relations_file, 'a') as f:
+    with open(relations_file, "a") as f:
         for follower in my_followers_left:
             print(f"Getting relations for {follower}")
 
@@ -75,46 +136,53 @@ try:
             time.sleep(0.5)
             print("\rProcessing followees", end="")
 
-            animation = [' |', ' /', ' -', ' \\']
+            animation = [" |", " /", " -", " \\"]
             anim_index = 0
             countMutual = 0
-            
+
             # Create a file for storing detailed data if --store-data is enabled
             followee_data_file = None
             if store_data:
-                followee_data_path = f"followers_data/{profile.username}.{profile.userid}.txt"
-                followee_data_file = open(followee_data_path, 'w')
-            
+                followee_data_path = (
+                    f"followers_data/{profile.username}.{profile.userid}.txt"
+                )
+                followee_data_file = open(followee_data_path, "w")
+
             for followee in tempFollowees:
                 if not no_animation:
-                    print(f"\rProcessing followees{animation[anim_index % len(animation)]}", end="")
+                    print(
+                        f"\rProcessing followees{animation[anim_index % len(animation)]}",
+                        end="",
+                    )
                     anim_index += 1
-                
+
                 # Store the followee data if --store-data is enabled
                 if store_data and followee_data_file:
                     followee_data_file.write(f"{followee.username}\n")
-                    
+
                 time.sleep(0.05)
                 if followee.username.strip() in my_followers:
                     f.write(f"{follower} {followee.username}\n")
                     f.flush()
                     countMutual += 1
-            
+
             # Close the data file if it was opened
             if store_data and followee_data_file:
                 followee_data_file.close()
 
-            print(" \r", end="")  # Clear the whole line after animation (works even if animation is disabled)
+            print(
+                " \r", end=""
+            )  # Clear the whole line after animation (works even if animation is disabled)
 
             print("Mutual: ", countMutual, " followees")
-            
-            #if countMutual == 0:
+
+            # if countMutual == 0:
             #    sys.exit()
 
-            if platform.system() == 'Windows':
-                with open('my_followers_left.txt', 'r') as f_r:
+            if platform.system() == "Windows":
+                with open("my_followers_left.txt", "r") as f_r:
                     lines = f_r.readlines()
-                with open('my_followers_left.txt', 'w') as f_w:
+                with open("my_followers_left.txt", "w") as f_w:
                     f_w.writelines(lines[1:])
             else:
                 os.system('sed -i "" -e "1d" my_followers_left.txt')
@@ -124,23 +192,22 @@ try:
                 if max_count == 0:
                     print("Max count reached. Exiting.")
                     break
-                
+
             print("Exit now if necessary\r", end="")
             time.sleep(wait_time)
 
-            
 
 except Exception as e:
     print(f"Error: {e}")
     print("Error")
     sys.exit(1)
 
-with open(relations_file, 'a') as f:
-    with open('followers.txt', 'r') as ffol:
-            for line in ffol:
-                follower = line.strip()
-                if follower:
-                    f.write(f"{follower} {username}\n")
-                    f.flush()
+with open(relations_file, "a") as f:
+    with open("followers.txt", "r") as ffol:
+        for line in ffol:
+            follower = line.strip()
+            if follower:
+                f.write(f"{follower} {username}\n")
+                f.flush()
 
 print("Scraping completed successfully!")

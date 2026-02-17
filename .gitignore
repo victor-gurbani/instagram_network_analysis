@@ -11,6 +11,9 @@ config.json
 # Ignore system files
 .DS_Store
 
+# Ignore stored follower data
+followers_data/
+
 # Ignore Python cache files
 __pycache__/
 *.pyc
