@@ -25,6 +25,27 @@ def external_analysis(config):
 
     print(f"Network: {len(network_members)} members loaded in graph.")
 
+    # Load Louvain community data if available (for community-relative analysis)
+    louvain_path = config.louvain_json
+    community_map = {}
+    if os.path.exists(louvain_path):
+        try:
+            with open(louvain_path, "r") as f:
+                l_data = json.load(f)
+            for node in l_data.get("nodes", []):
+                if "name" in node:
+                    community_map[node["name"]] = node.get("group", 0)
+            print(
+                f"Loaded community data for {len(community_map)} nodes from {louvain_path}."
+            )
+        except Exception as e:
+            print(f"Error reading community data: {e}")
+            print("Proceeding with global analysis only.")
+    else:
+        print(
+            f"Community data not found ({louvain_path}). Proceeding with global analysis only."
+        )
+
     # Load external followee data
     print(f"\nLoading external followee data from {followers_data_dir}...")
     followee_sets = load_external_followees(followers_data_dir, network_members)
@@ -236,49 +257,95 @@ def external_analysis(config):
     )
     column_labels.append("Unique Reach")
 
-    # --- 4. Echo Chamber Score ---
-    print("\n\n### 4. Echo Chamber Score")
+    # --- 4. Echo Chamber Score (Community-Relative) ---
+    print("\n\n### 4. Echo Chamber Score (Community-Relative)")
     print("-" * 50)
 
-    # popular_followees = accounts followed by > 25% of network members
-    threshold_count = 0.25 * len(users_with_data)
-    popular_followees = set(
-        acc for acc, count in external_counts.items() if count > threshold_count
+    # 1. Calculate Global Popular Followees (Fallback & Comparison)
+    global_threshold = 0.25 * len(users_with_data)
+    global_popular = set(
+        acc for acc, count in external_counts.items() if count > global_threshold
+    )
+    print(
+        f"Global Baseline: {len(global_popular)} popular accounts (>25% of all users)."
     )
 
-    print(
-        f"Defined {len(popular_followees)} popular external accounts (>25% coverage)."
-    )
+    # 2. Group users by community
+    community_groups = collections.defaultdict(list)
+    for user in users_with_data:
+        # Default to group 0 if not in map
+        group_id = community_map.get(user, 0)
+        community_groups[group_id].append(user)
+
+    print(f"Processing {len(community_groups)} communities for local conformity...")
 
     conformity_stats = []
 
-    for user in users_with_data:
-        followees = followee_sets[user]
-        if not popular_followees:
-            score = 0
-        else:
-            intersection = len(followees.intersection(popular_followees))
-            score = intersection / len(popular_followees)
-        conformity_stats.append((user, score, len(followees)))
+    for group_id, members in community_groups.items():
+        # Only do local analysis if group is large enough (e.g. > 5 members)
+        # Otherwise fallback to global
+        use_local = len(members) > 5
 
+        local_popular = set()
+        if use_local:
+            # Calculate popular accounts within this specific community
+            local_counts = collections.defaultdict(int)
+            for user in members:
+                for followee in followee_sets[user]:
+                    # Exclude network members as usual
+                    if followee not in network_members and followee != my_name:
+                        local_counts[followee] += 1
+
+            local_threshold = 0.25 * len(members)
+            local_popular = set(
+                acc for acc, count in local_counts.items() if count > local_threshold
+            )
+            # Debug/Info for large groups
+            if len(members) > 20:
+                print(
+                    f"  Community {group_id}: {len(members)} members, {len(local_popular)} local norms."
+                )
+
+        # Calculate scores for members of this group
+        for user in members:
+            followees = followee_sets[user]
+
+            # Global Score
+            if not global_popular:
+                global_score = 0
+            else:
+                g_inter = len(followees.intersection(global_popular))
+                global_score = g_inter / len(global_popular)
+
+            # Local Score
+            if use_local and local_popular:
+                l_inter = len(followees.intersection(local_popular))
+                local_score = l_inter / len(local_popular)
+            else:
+                # Fallback: Local score = Global score if no local context
+                local_score = global_score
+
+            # Store: (user, local_score, len_followees, global_score)
+            conformity_stats.append((user, local_score, len(followees), global_score))
+
+    # Sort by LOCAL score for mavericks/conformists
     conformity_stats.sort(key=lambda x: x[1], reverse=True)
 
-    print("\nTop 10 Echo Chamber Users (highest conformity):")
+    print("\nTop 10 Echo Chamber Users (highest local conformity):")
     for r in conformity_stats[:10]:
-        print(f"  {r[0]}: {r[1]:.4f}")
+        print(f"  {r[0]}: {r[1]:.4f} (Global: {r[3]:.4f})")
 
     # Mavericks: lowest conformity among users with > 100 followees
     mavericks = [r for r in conformity_stats if r[2] > 100]
     mavericks.sort(key=lambda x: x[1])
 
-    print("\nTop 10 Mavericks (lowest conformity, >100 followees):")
+    print("\nTop 10 Mavericks (lowest local conformity, >100 followees):")
     for r in mavericks[:10]:
-        print(f"  {r[0]}: {r[1]:.4f}")
+        print(f"  {r[0]}: {r[1]:.4f} (Global: {r[3]:.4f})")
 
-    avg_conformity = (
-        np.mean([r[1] for r in conformity_stats]) if conformity_stats else 0
-    )
-    print(f"\nNetwork-wide conformity average: {avg_conformity:.4f}")
+    avg_local = np.mean([r[1] for r in conformity_stats]) if conformity_stats else 0
+    avg_global = np.mean([r[3] for r in conformity_stats]) if conformity_stats else 0
+    print(f"\nNetwork averages - Local: {avg_local:.4f}, Global: {avg_global:.4f}")
 
     # Add to table data: "Echo Chamber" (top 8 + bottom 8)
     top_8_echo = [(r[0], r[1]) for r in conformity_stats[:8]]
@@ -293,54 +360,35 @@ def external_analysis(config):
     print("\n\n### 5. Interest Bridges (Cross-Community Latent Links)")
     print("-" * 50)
 
-    louvain_path = config.louvain_json
-    # Check if we should look in current dir or root? Config default is filename only.
-    # Try current dir
-    if not os.path.exists(louvain_path):
-        # Try one level up if not found? No, follow strict path
-        pass
+    if community_map:
+        bridges = []
+        # Use ALL high-Jaccard pairs (not just latent_friends) to find
+        # cross-community interest overlap — including connected pairs
+        for (u1, u2), score in jaccard_scores:
+            if score < config.jaccard_threshold:
+                break  # jaccard_scores is sorted desc, so stop early
 
-    community_map = {}
-    if os.path.exists(louvain_path):
-        try:
-            with open(louvain_path, "r") as f:
-                l_data = json.load(f)
-            for node in l_data.get("nodes", []):
-                if "name" in node:
-                    community_map[node["name"]] = node.get("group", 0)
-
-            print(f"Loaded community data for {len(community_map)} nodes.")
-
-            bridges = []
-            # Use ALL high-Jaccard pairs (not just latent_friends) to find
-            # cross-community interest overlap — including connected pairs
-            for (u1, u2), score in jaccard_scores:
-                if score < config.jaccard_threshold:
-                    break  # jaccard_scores is sorted desc, so stop early
-
-                if u1 in community_map and u2 in community_map:
-                    if community_map[u1] != community_map[u2]:
-                        has_edge = G_undirected.has_edge(u1, u2)
-                        bridges.append(
-                            (
-                                (u1, u2),
-                                score,
-                                community_map[u1],
-                                community_map[u2],
-                                has_edge,
-                            )
+            if u1 in community_map and u2 in community_map:
+                if community_map[u1] != community_map[u2]:
+                    has_edge = G_undirected.has_edge(u1, u2)
+                    bridges.append(
+                        (
+                            (u1, u2),
+                            score,
+                            community_map[u1],
+                            community_map[u2],
+                            has_edge,
                         )
+                    )
 
-            bridges.sort(key=lambda x: x[1], reverse=True)
+        bridges.sort(key=lambda x: x[1], reverse=True)
 
-            print(f"\nTop 15 Interest Bridges (High Jaccard, Different Communities):")
-            for item in bridges[:15]:
-                (u1, u2), score, c1, c2, has_edge = item
-                link = "linked" if has_edge else "unlinked"
-                print(f"  {u1} (Comm {c1}) <--> {u2} (Comm {c2}): {score:.4f} [{link}]")
+        print(f"Top 15 Interest Bridges (High Jaccard, Different Communities):")
+        for item in bridges[:15]:
+            (u1, u2), score, c1, c2, has_edge = item
+            link = "linked" if has_edge else "unlinked"
+            print(f"  {u1} (Comm {c1}) <--> {u2} (Comm {c2}): {score:.4f} [{link}]")
 
-        except Exception as e:
-            print(f"Error reading community data: {e}")
     else:
         print(
             "Community data not found (relations_louvain.json). Run community_detection.py first for Interest Bridge analysis."
@@ -361,8 +409,8 @@ def external_analysis(config):
             r[0]: {"total": r[1], "unique": r[2], "ratio": r[3]} for r in reach_stats
         }
 
-        # conformity_stats: (user, score, len)
-        echo_map = {r[0]: r[1] for r in conformity_stats}
+        # conformity_stats: (user, local_score, len_followees, global_score)
+        echo_map = {r[0]: {"local": r[1], "global": r[3]} for r in conformity_stats}
 
         # Latent friends: top 1 per user?
         # Let's find top latent friend for each user
@@ -382,7 +430,11 @@ def external_analysis(config):
                 node["unique_ratio"] = float(f"{reach_map[name]['ratio']:.4f}")
 
             if name in echo_map:
-                node["echo_chamber_score"] = float(f"{echo_map[name]:.4f}")
+                # Primary score for visualization (Local)
+                node["echo_chamber_score"] = float(f"{echo_map[name]['local']:.4f}")
+                # Extra scores
+                node["local_echo_score"] = float(f"{echo_map[name]['local']:.4f}")
+                node["global_echo_score"] = float(f"{echo_map[name]['global']:.4f}")
 
             if name in top_latent_map:
                 node["top_latent_friend"] = top_latent_map[name][0]
