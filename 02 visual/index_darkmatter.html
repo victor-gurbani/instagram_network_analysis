@@ -16,6 +16,7 @@
     #d3_selectable_force_directed_graph .node { stroke: #fff; stroke-width: 1px; cursor: pointer; }
     .node.selected { stroke: #ffd700; stroke-width: 2px; }
     .node.path-highlight { stroke: #00ffff; stroke-width: 3px; z-index: 1000; }
+    .node.unreachable { opacity: 0.1; pointer-events: none; }
     .link.path-highlight { stroke: #00ffff !important; stroke-width: 3px !important; stroke-opacity: 1 !important; z-index: 999; }
     .hidden { opacity: 0.2; }
     .link-bi { stroke: #999 !important; }
@@ -245,6 +246,13 @@
         Gravity Force: <span id="gravity-val">0.05</span>
         <input type="range" id="slider-gravity" min="0.01" max="0.3" value="0.05" step="0.01" style="width:100%" />
       </label>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Analysis Tools</div>
+      <button id="btn-diameter" style="width:100%; margin-bottom:6px; padding:4px; cursor:pointer;">Show Diameter</button>
+      <label><input type="checkbox" id="toggle-unreachable" /> Fade Unreachable</label>
+      <label><input type="checkbox" id="toggle-cluster-planets" /> Cluster Planets</label>
     </div>
 
     <div class="panel-section">
@@ -884,6 +892,7 @@
           if (!gBrush) {
             gBrush = gBrushHolder.append('g');
             gBrush.call(brush);
+            gBrushHolder.raise(); // Ensure brush is on top
           }
         }
       }
@@ -1316,6 +1325,219 @@
             }
           });
       }
+
+      // ===== ADVANCED TOOLS =====
+
+      // 1. Diameter (Approximate via Double BFS)
+      function calculateDiameter() {
+        var allNodes = d3v4.selectAll('.node').data();
+        if (allNodes.length === 0) return;
+
+        // Step 1: BFS from random node to find farthest (u)
+        var startNode = allNodes[0]; // any node
+        var farthestFromStart = getFarthestNode(startNode, allNodes);
+
+        // Step 2: BFS from u to find farthest (v)
+        var endNode = getFarthestNode(farthestFromStart.node, allNodes);
+        
+        // Step 3: Get path
+        var path = findPath(farthestFromStart.node, endNode.node);
+        
+        if (path) {
+            console.log("Diameter found (" + path.length + " hops):", path.map(function(n) { return n.name; }));
+            highlightPath(path);
+            
+            // Show stats in inspection panel
+            var $panel = $('#inspection-panel');
+            var $list = $('#inspection-list');
+            $list.empty();
+            $panel.show();
+            $panel.find('h3').text("Diameter Path (" + (path.length - 1) + " hops)");
+            
+            path.forEach(function(n, i) {
+                $list.append('<li><span>' + (i+1) + '. ' + n.name + '</span><span class="count">Deg: ' + n.degree + '</span></li>');
+            });
+        }
+      }
+
+      function getFarthestNode(startNode, allNodes) {
+         var queue = [[startNode, 0]];
+         var visited = new Set();
+         visited.add(String(startNode.id));
+         var farthest = { node: startNode, dist: 0 };
+         
+         // Build adjacency on the fly (or reuse if available)
+         // Note: findPath does this too. Ideally we cache it.
+         var adj = {}; 
+         d3v4.selectAll('.link').data().forEach(function(l) {
+             var s = String(l.source.id);
+             var t = String(l.target.id);
+             if (!adj[s]) adj[s] = [];
+             if (!adj[t]) adj[t] = [];
+             adj[s].push(l.target);
+             adj[t].push(l.source);
+         });
+
+         while(queue.length > 0) {
+             var item = queue.shift();
+             var u = item[0];
+             var d = item[1];
+             
+             if (d > farthest.dist) {
+                 farthest = { node: u, dist: d };
+             }
+             
+             var neighbors = adj[String(u.id)] || [];
+             for(var i=0; i<neighbors.length; i++) {
+                 var v = neighbors[i];
+                 var vId = String(v.id);
+                 if(!visited.has(vId)) {
+                     visited.add(vId);
+                     queue.push([v, d+1]);
+                 }
+             }
+         }
+         return farthest;
+      }
+
+      $('#btn-diameter').on('click', function() {
+         calculateDiameter();
+      });
+
+      // 2. Unreachable Nodes (Connected Components)
+      function updateUnreachableVisibility() {
+          var fade = $('#toggle-unreachable').is(':checked');
+          
+          if (!fade) {
+              d3v4.selectAll('.node').classed('unreachable', false);
+              return;
+          }
+
+          // Find Largest Connected Component (LCC)
+          var allNodes = d3v4.selectAll('.node').data();
+          var visitedGlobal = new Set();
+          var components = [];
+          
+          // Build adjacency
+          var adj = {};
+          d3v4.selectAll('.link').data().forEach(function(l) {
+             var s = String(l.source.id);
+             var t = String(l.target.id);
+             if (!adj[s]) adj[s] = [];
+             if (!adj[t]) adj[t] = [];
+             adj[s].push(l.target);
+             adj[t].push(l.source);
+          });
+
+          allNodes.forEach(function(node) {
+              if (!visitedGlobal.has(String(node.id))) {
+                  var component = [];
+                  var queue = [node];
+                  visitedGlobal.add(String(node.id));
+                  
+                  while(queue.length > 0) {
+                      var u = queue.shift();
+                      component.push(u);
+                      
+                      var neighbors = adj[String(u.id)] || [];
+                      for(var i=0; i<neighbors.length; i++) {
+                          var v = neighbors[i];
+                          if(!visitedGlobal.has(String(v.id))) {
+                              visitedGlobal.add(String(v.id));
+                              queue.push(v);
+                          }
+                      }
+                  }
+                  components.push(component);
+              }
+          });
+          
+          // Sort by size
+          components.sort(function(a,b) { return b.length - a.length; });
+          
+          // Largest is first. Others are "unreachable" from main cluster.
+          var lcc = new Set(components[0].map(function(n){ return String(n.id); }));
+          
+          d3v4.selectAll('.node').classed('unreachable', function(d) {
+              return !lcc.has(String(d.id));
+          });
+      }
+
+      $('#toggle-unreachable').on('change', updateUnreachableVisibility);
+
+      // 3. Planet Clustering
+      function clusterPlanets() {
+          var enabled = $('#toggle-cluster-planets').is(':checked');
+          if (!enabled) {
+              // Revert to default sorting (by follower count)
+              shadowCentersData.sort(function(a, b) { return b.follower_count - a.follower_count; });
+              renderShadowPlanets();
+              if(galaxyMode) simulation.alpha(0.3).restart();
+              return;
+          }
+
+          // Sort by similarity (Simple approach: Jaccard of followers in graph)
+          // 1. Map each planet to set of local followers
+          var planetFollowers = {};
+          shadowCentersData.forEach(function(p) { planetFollowers[p.name] = new Set(); });
+          
+          d3v4.selectAll('.node').data().forEach(function(n) {
+              if (n.shadow_follows) {
+                  n.shadow_follows.forEach(function(pName) {
+                      if (planetFollowers[pName]) {
+                          planetFollowers[pName].add(n.id);
+                      }
+                  });
+              }
+          });
+
+          // 2. Greedy sort: start with largest, then find most similar to last added
+          var sorted = [];
+          var remaining = shadowCentersData.slice();
+          
+          // Start with the biggest one
+          remaining.sort(function(a, b) { return b.follower_count - a.follower_count; });
+          var current = remaining.shift();
+          sorted.push(current);
+          
+          while (remaining.length > 0) {
+              var bestIdx = -1;
+              var bestScore = -1;
+              
+              var setA = planetFollowers[current.name];
+              
+              for (var i=0; i<remaining.length; i++) {
+                  var candidate = remaining[i];
+                  var setB = planetFollowers[candidate.name];
+                  
+                  // Jaccard
+                  var intersection = 0;
+                  setA.forEach(function(val) { if(setB.has(val)) intersection++; });
+                  var union = setA.size + setB.size - intersection;
+                  var score = union === 0 ? 0 : intersection / union;
+                  
+                  if (score > bestScore) {
+                      bestScore = score;
+                      bestIdx = i;
+                  }
+              }
+              
+              if (bestIdx !== -1) {
+                  current = remaining.splice(bestIdx, 1)[0];
+                  sorted.push(current);
+              } else {
+                  // No overlap, just pick next largest
+                  current = remaining.shift();
+                  sorted.push(current);
+              }
+          }
+          
+          shadowCentersData = sorted;
+          renderShadowPlanets();
+          if(galaxyMode) simulation.alpha(0.3).restart();
+      }
+      
+      $('#toggle-cluster-planets').on('change', clusterPlanets);
 
       // ===== SEARCH =====
       var svgSel = d3v4.select('#d3_selectable_force_directed_graph');
