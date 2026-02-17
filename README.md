@@ -1,8 +1,8 @@
 <div align="center">
  
-# Instagram Network Analysis (Updated 2026)
+# Instagram Network Analysis (Omni-Viz Edition)
 
-*Build an interactive network of your Instagram followers and their relations in 3 easy steps! (and quite some time)*
+*Build an interactive network of your Instagram followers and their relations. Now featuring Omni-Viz: deep analysis of hidden patterns and cultural hubs.*
 
 <sub>Example:</sub>\
 ![alt text](exampleNetwork.jpg "Example Interactive Network")\
@@ -95,11 +95,12 @@ and open [index.html](http://localhost:8080/index.html) in the browser to see th
 
 ### Dark Matter Analysis (requires `--store-data`)
 
-If you scraped with `--store-data` (or accepted the prompt — the script asks automatically with a 15s timeout defaulting to yes), you can run the **external analysis** to uncover hidden patterns from full followee lists:
+If you scraped with `--store-data`, you can run the **external analysis** to uncover hidden patterns from full followee lists:
 
 ```bash
 cd 03\ analysis/
-python3 external_analysis.py
+python3 external_analysis.py --louvain_json relations_louvain.json --top_k_shadow 200
+# change to --newman_json relations_newman.json for newman
 ```
 
 This analyzes the "dark matter" — the full following lists of every scraped follower — to reveal:
@@ -116,12 +117,37 @@ This analyzes the "dark matter" — the full following lists of every scraped fo
 _**--followers_data_dir** path to stored follower data (default: `../01 scraping/followers_data/`) \
 **--jaccard_threshold** minimum similarity to flag as latent friend (default: 0.15) \
 **--top_k_shadow** number of shadow centers to report (default: 50) \
-**--output_json** output file with enriched node data (default: `relations_darkmatter.json`)_
+**--output_json** output file with enriched node data (default: `relations_darkmatter.json`) \
+**--louvain_json** path to Louvain (also applicable to Newman by changing the name) community data for federal selection_
 
 To visualize the dark matter analysis in the D3 graph:
 ```bash
 cd ../02\ visual/ && cp ../03\ analysis/relations_darkmatter.json ./relations.json
 ```
+And open `index_darkmatter.html`.
+
+---
+
+## The Omni-Viz Upgrade
+
+The new visualization suite (`index_darkmatter.html`) transforms the static graph into a laboratory for social discovery.
+
+### Interactive Tools
+- **Pathfinder (Alt + Click)**: Select any two nodes to calculate and highlight the shortest path between them.
+- **Culture Inspector (Shift + Drag)**: Select a group of nodes to see their top shared interests and shadow centers in the inspection panel.
+- **Galaxy Mode**: Toggle "Enable Gravity" to let nodes be pulled toward the **Shadow Planets** they follow.
+  - **Free Planets**: Unlock the planets to let them find their own center of gravity based on their audience.
+  - **Planet Clustering**: Reorder planets by audience similarity to reveal cultural continents.
+- **Diameter**: Calculate the structural width of your network with one click.
+- **Unreachable Toggle**: Instantly fade out nodes that aren't part of the main connected component.
+
+### New Metrics & Sizing
+Color and size nodes by advanced network properties:
+- **Tribe Loyalty**: Measures how much of a user's network stays within their own community.
+- **Echo Chamber Score**: Identifies "Mavericks" (unique taste) vs. "Conformists" (follow local norms).
+- **Unique Reach**: Who connects you to the most niche, external accounts.
+- **PageRank & Betweenness**: Traditional centrality measures for identifying true influencers and bridge-builders.
+- **K-Core (Peel)**: Visualize the layers of your network, from the periphery to the core.
 
 ---
 
