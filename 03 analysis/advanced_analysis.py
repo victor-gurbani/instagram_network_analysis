@@ -288,10 +288,6 @@ def advanced_analysis(config):
 
 
 if __name__ == "__main__":
-    with open("../config.json") as config_file:
-        conf = json.load(config_file)
-    default_username = conf["username"]
-
     parser = argparse.ArgumentParser(
         description="Advanced network analysis: clustering, reciprocity, assortativity, k-core, diameter"
     )
@@ -299,8 +295,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--username",
         type=str,
-        default=default_username,
-        help="Username (default from ../config.json)",
+        default=None,
+        help="Username (falls back to config.json)",
     )
     parser.add_argument(
         "--input_txt_file",
@@ -330,4 +326,9 @@ if __name__ == "__main__":
     )
 
     config = parser.parse_args()
+    config.username = resolve_username(config.username)
+    if config.username is None:
+        parser.error(
+            "--username is required when config.json has no valid username"
+        )
     advanced_analysis(config)

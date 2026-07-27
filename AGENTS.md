@@ -3,7 +3,7 @@
 ## Execution model
 
 - This is a file-based pipeline of standalone scripts, not an installable Python package: `01 scraping/` collects data, `03 analysis/` enriches it, and `02 visual/` renders copied JSON in a static D3 UI.
-- Run scripts from their numbered directory. Many defaults are CWD-relative (`../config.json`, `followers.txt`, `relations.txt`, and output files), so root-level invocations can read or write the wrong paths.
+- Run scripts from their numbered directory. Data inputs and outputs (`followers.txt`, `relations.txt`, and generated files) remain CWD-relative, so root-level invocations can read or write the wrong paths. Config loading is the exception: it is anchored to the repository root and can be overridden with `INSTAGRAM_NETWORK_CONFIG`.
 - `03 analysis/helper_functions.py` is shared infrastructure for both analysis and scraping. `01 scraping/insta_utils.py` and `relations_to_json.py` add that directory to `sys.path`; moving or renaming it breaks both stages.
 - Preserve `followers_file` handling when changing graph construction. It seeds isolated followers that do not occur in `relations.txt`.
 

@@ -31,6 +31,9 @@ And set your Instagram username (and browser user-agent) in the config.json file
 ```bash
 nano config.json
 ```
+Scripts find this repository-root file regardless of the directory they are launched
+from. To use a different configuration, set `INSTAGRAM_NETWORK_CONFIG` to its path;
+relative override paths are resolved from the directory where the command is run.
 
 ## Step 1
 

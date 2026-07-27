@@ -5,19 +5,19 @@ import os # Added for path manipulation
 
 # Add the '03 analysis' directory to sys.path to allow importing helper_functions
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '03 analysis')))
-from helper_functions import str2bool
+from helper_functions import resolve_username, str2bool
 
 
 def relations_to_json(config):
-    username = config.username
+    username = resolve_username(config.username)
     include_me = config.include_me
     input_txt_file = config.input_txt_file
     output_json_file = config.output_json_file
 
     if not username:
-        with open('../config.json') as config_file:
-            conf = json.load(config_file)
-            username = conf['username']
+        raise ValueError(
+            "A username is required; pass --username or configure one in config.json."
+        )
 
     nodes = set()
     edges = set()
@@ -100,5 +100,7 @@ if __name__ == '__main__':
     parser.add_argument('--followers_file', type=str, default='followers.txt', help='File containing your followers (default: followers.txt).')
 
     config = parser.parse_args()
+    config.username = resolve_username(config.username)
+    if config.username is None:
+        parser.error('--username is required when config.json has no valid username')
     relations_to_json(config)
-

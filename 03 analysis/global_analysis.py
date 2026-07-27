@@ -56,18 +56,14 @@ def global_analysis(config):
 
 
 if __name__ == '__main__':
-    default_username = get_username_from_config()
-    if default_username is None:
-        print("Error: Username could not be loaded from config. Please check config.json.")
-        # Potentially exit or set a fallback
-        pass
-
     parser = argparse.ArgumentParser()
-    parser.add_argument('--username', type=str, default=default_username, help='The username to use (default from config.json)')
+    parser.add_argument('--username', type=str, default=None, help='The username to use (falls back to config.json)')
     parser.add_argument('--include_me', type=str2bool, default=False, help='Whether to include yourself in the analysis')
     parser.add_argument('--input_txt_file', type=str, default='relations.txt', help='Input text file')
     # input_json_file argument removed as it's not used in the script
 
     config = parser.parse_args()
+    config.username = resolve_username(config.username)
+    if config.username is None:
+        parser.error('--username is required when config.json has no valid username')
     global_analysis(config)
-

@@ -1,6 +1,5 @@
 import sys
 import os
-import json # For potential JSONDecodeError
 from instaloader import Instaloader, exceptions as instaloader_exceptions
 
 # Add the '03 analysis' directory to sys.path to allow importing helper_functions
@@ -9,7 +8,7 @@ from helper_functions import load_config, get_username_from_config
 
 def init_instaloader():
     """
-    Initializes Instaloader with configuration from ../config.json.
+    Initializes Instaloader with the repository configuration.
     Loads the session for the configured username.
 
     Returns:
@@ -20,11 +19,11 @@ def init_instaloader():
         print("Error: Could not load config.json. Instaloader initialization failed.")
         return None, None
 
-    username = config.get('username')
+    username = get_username_from_config(config)
     user_agent = config.get('user_agent')
 
     if not username:
-        print("Error: 'username' not found in config. Instaloader initialization failed.")
+        print("Error: Instaloader initialization failed.")
         return None, None
     
     # user_agent is optional for Instaloader, but good practice to set if available

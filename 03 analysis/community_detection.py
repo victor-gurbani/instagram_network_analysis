@@ -79,26 +79,10 @@ def community_detection(config):
     print("Modularity score Girvan-Newman method at level " + str(count) + ": " + str(round(nx.algorithms.community.modularity(G, communities_newman_final), 2)))
 
 if __name__ == '__main__':
-
-    default_username = get_username_from_config()
-    if default_username is None:
-        # Fallback or error if username couldn't be loaded
-        # For now, let's use a placeholder or raise an error
-        # This behavior might need to be decided based on application's requirements
-        print("Error: Username could not be loaded from config. Please check config.json.")
-        # default_username = "fallback_user" # Or exit, or handle as appropriate
-        # For the purpose of this refactor, we assume config is present and valid
-        # If not, argparse will fail if default_username is None and --username is not provided.
-        # Or, we can make the script exit if default_username is None.
-        # For now, let's allow it to proceed and potentially fail at ArgumentParser if username is required.
-        # A more robust solution would be to exit if default_username is None and it's critical.
-        pass
-
-
     parser = argparse.ArgumentParser()
 
     # Input parameters with help and defaults
-    parser.add_argument('--username', type=str, default=default_username, help='Username (default from config.json)')
+    parser.add_argument('--username', type=str, default=None, help='Username (falls back to config.json)')
     parser.add_argument('--input_txt_file', type=str, default='relations.txt', help='Input TXT file (default: relations.txt)')
     parser.add_argument('--input_json_file', type=str, default='relations.json', help='Input JSON file (default: relations.json)')
     parser.add_argument('--include_me', type=str2bool, default=False, help='Include yourself in the analysis (default: False)')
@@ -107,5 +91,8 @@ if __name__ == '__main__':
     parser.add_argument('--output_newman_json', type=str, default='relations_newman.json', help='Output JSON file for Girvan-Newman method (default: relations_newman.json)')
 
     config = parser.parse_args()
+    config.username = resolve_username(config.username)
+    if config.username is None:
+        parser.error('--username is required when config.json has no valid username')
 
     community_detection(config)

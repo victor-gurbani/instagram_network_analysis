@@ -733,14 +733,13 @@ def external_analysis(config):
 
 
 if __name__ == "__main__":
-    # Load default username from config
-    default_username = get_username_from_config()
-
     parser = argparse.ArgumentParser(
         description="Dark Matter network analysis on full followee lists"
     )
 
-    parser.add_argument("--username", type=str, default=default_username)
+    parser.add_argument(
+        "--username", type=str, default=None, help="Username (falls back to config.json)"
+    )
     parser.add_argument("--input_txt_file", type=str, default="relations.txt")
     parser.add_argument("--input_json_file", type=str, default="relations.json")
     parser.add_argument(
@@ -758,5 +757,8 @@ if __name__ == "__main__":
     parser.add_argument("--jaccard_threshold", type=float, default=0.15)
 
     config = parser.parse_args()
+    config.username = resolve_username(config.username)
+    if config.username is None:
+        parser.error("--username is required when config.json has no valid username")
 
     external_analysis(config)

@@ -2,7 +2,6 @@ import instaloader
 import time
 import sys
 import copy
-import json
 import os
 import platform
 import argparse
@@ -48,21 +47,15 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-target_username = args.username
+target_username = (
+    args.username.strip()
+    if args.username and args.username.strip()
+    else logged_in_username
+)
 wait_time = args.wait_time
 max_count = args.max_count
 no_animation = args.no_animation
 store_data = args.store_data
-
-if not target_username:
-    with open("../config.json") as config_file:
-        config = json.load(config_file)
-        target_username = config.get("username")
-    if not target_username:
-        print(
-            "Error: Target username not provided in args or found in config.json. Exiting."
-        )
-        sys.exit(1)
 
 print(f"Target profile for scraping relations: {target_username}")
 print(f"Session loaded for user: {logged_in_username}")

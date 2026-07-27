@@ -159,45 +159,83 @@ def create_undirected_graph_from_txt(
     )
 
 
-CONFIG_FILE_PATH = os.path.join(os.path.dirname(__file__), "..", "config.json")
+CONFIG_ENV_VAR = "INSTAGRAM_NETWORK_CONFIG"
+CONFIG_FILE_PATH = os.path.realpath(
+    os.path.join(os.path.dirname(__file__), "..", "config.json")
+)
 
 
-def load_config():
+def resolve_config_file_path(config_file_path=None):
+    """Return the config path without depending on the process working directory.
+
+    An explicit path takes precedence over ``INSTAGRAM_NETWORK_CONFIG``. If neither
+    is set, the repository-root ``config.json`` is used. Relative overrides remain
+    relative to the caller's working directory because they are intentional user
+    input, while the default is anchored to this source file.
     """
-    Loads the configuration from ../config.json.
-    Handles FileNotFoundError and json.JSONDecodeError.
-    Returns the loaded config dictionary or None if an error occurs.
-    """
+    configured_path = config_file_path
+    if configured_path is None:
+        configured_path = os.environ.get(CONFIG_ENV_VAR) or CONFIG_FILE_PATH
+
+    resolved_path = os.path.expanduser(os.fspath(configured_path))
+    if not os.path.isabs(resolved_path):
+        resolved_path = os.path.join(os.getcwd(), resolved_path)
+    return os.path.abspath(resolved_path)
+
+
+def load_config(config_file_path=None):
+    """Load a JSON-object configuration, returning ``None`` on a clear error."""
+    resolved_path = resolve_config_file_path(config_file_path)
     try:
-        with open(CONFIG_FILE_PATH, "r") as f:
-            config = json.load(f)
-        return config
+        with open(resolved_path, "r", encoding="utf-8") as config_file:
+            config = json.load(config_file)
     except FileNotFoundError:
-        print(f"Error: Configuration file not found at {CONFIG_FILE_PATH}")
+        print(f"Error: Configuration file not found at {resolved_path}")
         return None
-    except json.JSONDecodeError:
-        print(f"Error: Could not decode JSON from {CONFIG_FILE_PATH}")
+    except json.JSONDecodeError as error:
+        print(
+            "Error: Could not decode JSON from "
+            f"{resolved_path} (line {error.lineno}, column {error.colno})"
+        )
+        return None
+    except UnicodeDecodeError as error:
+        print(f"Error: Configuration file at {resolved_path} is not valid UTF-8: {error}")
+        return None
+    except OSError as error:
+        print(f"Error: Could not read configuration file at {resolved_path}: {error}")
         return None
 
+    if not isinstance(config, dict):
+        print(f"Error: Configuration in {resolved_path} must be a JSON object.")
+        return None
+    return config
 
-def get_username_from_config(config=None):
-    """
-    Retrieves the username from the config.
-    If config is not provided, it calls load_config().
-    Handles KeyError if 'username' is not found.
-    Returns the username or None if an error occurs.
-    """
+
+def get_username_from_config(config=None, config_file_path=None):
+    """Return a nonblank username from a config mapping, if available."""
     if config is None:
-        config = load_config()
+        config = load_config(config_file_path)
+    if config is None:
+        return None
+    if not isinstance(config, dict):
+        print("Error: Configuration must be a mapping containing 'username'.")
+        return None
 
-    if config is not None:
-        try:
-            username = config["username"]
-            return username
-        except KeyError:
-            print("Error: 'username' not found in the configuration file.")
-            return None
-    return None
+    username = config.get("username")
+    if not isinstance(username, str) or not username.strip():
+        print("Error: 'username' must be a non-empty string in the configuration file.")
+        return None
+    return username.strip()
+
+
+def resolve_username(username=None, config=None, config_file_path=None):
+    """Prefer a supplied username, falling back to the configured username."""
+    if username is not None:
+        if isinstance(username, str) and username.strip():
+            return username.strip()
+        print("Error: The supplied username must be a non-empty string.")
+        return None
+    return get_username_from_config(config, config_file_path)
 
 
 def add_cluster_to_json(input_dict, cluster_dict):
